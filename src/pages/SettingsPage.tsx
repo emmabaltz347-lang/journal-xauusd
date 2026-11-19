@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Icon } from '../components/ui/Icon';
@@ -10,6 +10,8 @@ import { useToast } from '../hooks/useToast';
 import { testAccess } from '../lib/github/client';
 import { exportJson, importJson } from '../lib/export/json';
 import { parseDecimal, toInput } from '../lib/format';
+import { clearLocalTrades } from '../lib/storage';
+import type { Trade } from '../types/trade';
 
 function Row({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
@@ -23,7 +25,7 @@ function Row({ label, hint, children }: { label: string; hint?: ReactNode; child
 
 export default function SettingsPage() {
   const { settings, update } = useSettings();
-  const { trades, mode, importTrades, resetDemo, reload } = useTrades();
+  const { trades, mode, importTrades, resetDemo, reload, lastSync, localOnly } = useTrades();
   const toast = useToast();
   const file = useRef<HTMLInputElement>(null);
 
@@ -37,6 +39,26 @@ export default function SettingsPage() {
   const [testing, setTesting] = useState(false);
   const [capital, setCapital] = useState(toInput(settings.startingCapital));
   const [risk, setRisk] = useState(toInput(settings.defaultRiskPercent));
+  const [pipsPerDollar, setPipsPerDollar] = useState(toInput(settings.pipsPerDollar));
+  const [contractSize, setContractSize] = useState(toInput(settings.contractSize));
+  const [eurUsd, setEurUsd] = useState(toInput(settings.eurUsd));
+  const [pending, setPending] = useState<Trade[]>([]);
+
+  // Trades saisis dans ce navigateur avant la connexion à GitHub
+  useEffect(() => {
+    if (mode === 'github') void localOnly().then(setPending);
+  }, [mode, localOnly]);
+
+  const sendLocal = async () => {
+    try {
+      await importTrades(pending, false);
+      clearLocalTrades();
+      setPending([]);
+      toast(`${pending.length} trade(s) envoyé(s) sur GitHub`, 'success');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), 'error');
+    }
+  };
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
 
   const saveGitHub = async () => {
@@ -70,8 +92,13 @@ export default function SettingsPage() {
   const saveTrading = () => {
     const c = parseDecimal(capital);
     const r = parseDecimal(risk);
+    const p = parseDecimal(pipsPerDollar);
+    const cs = parseDecimal(contractSize);
+    const fx = parseDecimal(eurUsd);
     if (c == null || c <= 0 || r == null || r <= 0) return toast('Capital et risque doivent être positifs.', 'error');
-    update({ startingCapital: c, defaultRiskPercent: r });
+    if (p == null || p <= 0 || cs == null || cs <= 0 || fx == null || fx <= 0)
+      return toast('Pips, taille de lot et taux EUR/USD doivent être positifs.', 'error');
+    update({ startingCapital: c, defaultRiskPercent: r, pipsPerDollar: p, contractSize: cs, eurUsd: fx });
     toast('Réglages enregistrés', 'success');
   };
 
@@ -96,8 +123,19 @@ export default function SettingsPage() {
           <Row label="Capital de départ (€)" hint="Le capital actuel = départ + gains cumulés. Les € de chaque trade sont recalculés.">
             <input className="field num" inputMode="decimal" value={capital} onChange={(e) => setCapital(e.target.value)} />
           </Row>
-          <Row label="Risque par défaut (%)" hint="Pré-rempli dans le formulaire, modifiable trade par trade.">
+          <Row label="Risque par défaut (%)" hint="Utilisé seulement quand vous ne renseignez pas de lots.">
             <input className="field num" inputMode="decimal" value={risk} onChange={(e) => setRisk(e.target.value)} />
+          </Row>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Row label="Pips pour 1 $" hint="10 : de 3903,56 à 3913,56 = 100 pips">
+            <input className="field num" inputMode="decimal" value={pipsPerDollar} onChange={(e) => setPipsPerDollar(e.target.value)} />
+          </Row>
+          <Row label="Onces par lot" hint="100 chez la plupart des brokers (1 lot = 100 oz)">
+            <input className="field num" inputMode="decimal" value={contractSize} onChange={(e) => setContractSize(e.target.value)} />
+          </Row>
+          <Row label="Taux EUR/USD" hint="1 € = x $. Sert à convertir les gains en € quand vous indiquez des lots.">
+            <input className="field num" inputMode="decimal" value={eurUsd} onChange={(e) => setEurUsd(e.target.value)} />
           </Row>
         </div>
         <button className="btn-gold mt-4" onClick={saveTrading}>
@@ -166,6 +204,23 @@ export default function SettingsPage() {
             </>
           )}
         </div>
+        {mode === 'github' && lastSync && (
+          <p className="mt-3 text-[11px] text-white/45">
+            Dernière synchronisation : {lastSync.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}. L'app se
+            met à jour toute seule quand vous revenez dessus et toutes les minutes.
+          </p>
+        )}
+        {mode === 'github' && pending.length > 0 && (
+          <div className="mt-4 rounded-xl border border-gold/40 bg-gold/10 p-3 text-sm">
+            <p className="text-white/85">
+              <strong className="text-gold">{pending.length} trade{pending.length > 1 ? 's' : ''}</strong> ont été saisis dans ce navigateur avant la
+              connexion à GitHub : ils ne sont pas encore synchronisés avec vos autres appareils.
+            </p>
+            <button className="btn-gold mt-3" onClick={sendLocal}>
+              Envoyer ces trades sur GitHub
+            </button>
+          </div>
+        )}
       </GlassCard>
 
       <GlassCard title="Tags d'erreur proposés" delay={0.1}>

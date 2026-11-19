@@ -44,6 +44,10 @@ export const TradeSchema = z.object({
   exitPrice: z.number().nullable(),
   outcome: z.enum(['tp', 'sl']).nullable(),
   riskPercent: z.number().positive(),
+  /** Taille de position en lots (facultatif, ajouté après la v1) */
+  lots: z.number().positive().nullable().default(null),
+  /** Résultat en € saisi à la main (montant exact du broker), prioritaire sur le calcul */
+  pnlManual: z.number().nullable().default(null),
   rMultiple: z.number().nullable(),
   rManual: z.boolean(),
   screenshots: z.object({
@@ -79,6 +83,12 @@ export interface Settings {
   defaultRiskPercent: number;
   knownErrorTags: string[];
   theme: Theme;
+  /** Nombre de pips pour 1 $ de mouvement sur l'or (10 : 3903,56 → 3913,56 = 100 pips) */
+  pipsPerDollar: number;
+  /** Onces par lot standard (100 chez la plupart des brokers) */
+  contractSize: number;
+  /** Taux de change EUR/USD utilisé pour convertir les gains en $ en € */
+  eurUsd: number;
 }
 
 /** Trade enrichi par les calculs (jamais stocké) */
@@ -89,4 +99,8 @@ export interface ComputedTrade extends Trade {
   capitalAfter: number;
   slPips: number;
   closed: boolean;
+  /** Montant risqué en € (perte si le SL est touché) */
+  riskEur: number;
+  /** Origine du résultat en € */
+  pnlSource: 'manual' | 'lots' | 'risk';
 }

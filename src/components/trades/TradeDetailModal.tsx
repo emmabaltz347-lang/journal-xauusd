@@ -65,7 +65,11 @@ export function TradeDetailModal({ trade, onClose }: { trade: ComputedTrade | nu
             <div className="flex flex-wrap items-center gap-2">
               <DirectionBadge d={t.direction} />
               <span className={`num text-2xl font-semibold ${resultClass(t.r)}`}>{t.closed ? fmtR(t.r) : 'En cours'}</span>
-              {t.closed && <span className={`num text-sm ${resultClass(t.pnlEur)}`}>{fmtEur(t.pnlEur, true)}</span>}
+              {t.closed && (
+                <span className={`num text-sm ${resultClass(t.pnlEur)}`} title={t.pnlSource === 'manual' ? 'Montant saisi (broker)' : t.pnlSource === 'lots' ? 'Calculé avec les lots' : 'Calculé avec le % de risque'}>
+                  {fmtEur(t.pnlEur, true)}
+                </span>
+              )}
               {t.outcome && <span className="chip">{t.outcome === 'tp' ? 'Take profit' : 'Stop loss'}</span>}
             </div>
             <div className="mt-1 text-sm text-white/55 first-letter:uppercase">
@@ -83,14 +87,17 @@ export function TradeDetailModal({ trade, onClose }: { trade: ComputedTrade | nu
             <Screenshot path={t.screenshots.after} label="Après" />
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             <Info label="Entrée">{fmtPrice(t.entryPrice)}</Info>
             <Info label="Stop loss">{fmtPrice(t.stopLoss)}</Info>
             <Info label="Take profit">{fmtPrice(t.takeProfit)}</Info>
             <Info label="Sortie">{fmtPrice(t.exitPrice)}</Info>
             <Info label="Risque SL">{fmtPips(t.slPips)}</Info>
             <Info label="R:R prévu">{(() => { const rr = plannedRR(t.direction, t.entryPrice, t.stopLoss, t.takeProfit); return rr == null ? '—' : fmtR(rr); })()}</Info>
-            <Info label="Risque">{String(t.riskPercent).replace('.', ',')} %</Info>
+            <Info label="Lots">{t.lots != null ? String(t.lots).replace('.', ',') : '—'}</Info>
+            <Info label="Risque">
+              {fmtEur(t.riskEur)} · {String(t.riskPercent).replace('.', ',')} %
+            </Info>
             <Info label="Capital avant">{fmtEur(t.capitalBefore)}</Info>
           </div>
 

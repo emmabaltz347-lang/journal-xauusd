@@ -30,6 +30,10 @@ interface Ctx {
   deleteTrade: (id: string) => Promise<void>;
   importTrades: (incoming: Trade[], replace: boolean) => Promise<void>;
   reload: () => Promise<void>;
+  refresh: () => Promise<void>;
+  lastSync: Date | null;
+  /** Trades saisis dans ce navigateur avant la connexion GitHub (hors démo) */
+  localOnly: () => Promise<Trade[]>;
   resetDemo: () => Promise<void>;
 }
 
@@ -51,25 +55,59 @@ export function TradesProvider({ children }: { children: ReactNode }) {
   const tradesRef = useRef(trades);
   tradesRef.current = trades;
 
-  const reload = useCallback(async () => {
-    setStatus('loading');
-    setError(null);
-    try {
-      if (repo) {
-        setTrades(await loadTrades(repo));
-      } else {
-        setTrades(loadLocalTrades() ?? (await fetchDemo()));
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const syncingRef = useRef(false);
+  syncingRef.current = syncing;
+
+  /** Charge les trades. `silent` : rafraîchissement en arrière-plan sans écran de chargement */
+  const load = useCallback(
+    async (silent: boolean) => {
+      if (!silent) {
+        setStatus('loading');
+        setError(null);
       }
-      setStatus('ready');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setStatus('error');
-    }
-  }, [repo]);
+      try {
+        if (repo) {
+          const fresh = await loadTrades(repo);
+          // on n'écrase pas une sauvegarde en cours
+          if (!syncingRef.current) setTrades(fresh);
+          setLastSync(new Date());
+        } else {
+          setTrades(loadLocalTrades() ?? (await fetchDemo()));
+        }
+        setStatus('ready');
+        setError(null);
+      } catch (e) {
+        if (silent) return; // une erreur réseau passagère ne casse pas l'affichage
+        setError(e instanceof Error ? e.message : String(e));
+        setStatus('error');
+      }
+    },
+    [repo],
+  );
+  const reload = useCallback(() => load(false), [load]);
+  const refresh = useCallback(() => load(true), [load]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // Synchronisation entre appareils : on relit GitHub quand l'app revient au premier plan
+  // (iPhone, onglet réactivé) et toutes les 60 s tant qu'elle est ouverte.
+  useEffect(() => {
+    if (!repo) return;
+    const onVisible = () => document.visibilityState === 'visible' && void refresh();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    window.addEventListener('online', onVisible);
+    const timer = window.setInterval(onVisible, 60_000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+      window.removeEventListener('online', onVisible);
+      window.clearInterval(timer);
+    };
+  }, [repo, refresh]);
 
   /** Applique une mutation, de façon optimiste, puis la persiste */
   const persist = useCallback(
@@ -81,6 +119,7 @@ export function TradesProvider({ children }: { children: ReactNode }) {
         if (repo) {
           const saved = await mutateTrades(repo, mutate, message);
           setTrades(saved);
+          setLastSync(new Date());
         } else if (!saveLocalTrades(mutate(previous))) {
           throw new Error('Stockage local plein : configurez GitHub ou exportez en JSON.');
         }
@@ -154,16 +193,27 @@ export function TradesProvider({ children }: { children: ReactNode }) {
     [persist],
   );
 
+  const localOnly = useCallback(async () => {
+    const local = loadLocalTrades() ?? [];
+    if (!local.length) return [];
+    const demoIds = new Set((await fetchDemo().catch(() => [])).map((t) => t.id));
+    return local.filter((t) => !demoIds.has(t.id));
+  }, []);
+
   const resetDemo = useCallback(async () => {
     clearLocalTrades();
     await reload();
   }, [reload]);
 
-  const computed = useMemo(() => computeTrades(trades, settings.startingCapital), [trades, settings.startingCapital]);
+  const calc = useMemo(
+    () => ({ pipsPerDollar: settings.pipsPerDollar, contractSize: settings.contractSize, eurUsd: settings.eurUsd }),
+    [settings.pipsPerDollar, settings.contractSize, settings.eurUsd],
+  );
+  const computed = useMemo(() => computeTrades(trades, settings.startingCapital, calc), [trades, settings.startingCapital, calc]);
 
   const value = useMemo(
-    () => ({ mode, status, error, syncing, trades, computed, saveTrade, deleteTrade, importTrades, reload, resetDemo }),
-    [mode, status, error, syncing, trades, computed, saveTrade, deleteTrade, importTrades, reload, resetDemo],
+    () => ({ mode, status, error, syncing, trades, computed, saveTrade, deleteTrade, importTrades, reload, refresh, lastSync, localOnly, resetDemo }),
+    [mode, status, error, syncing, trades, computed, saveTrade, deleteTrade, importTrades, reload, refresh, lastSync, localOnly, resetDemo],
   );
   return <TradesContext.Provider value={value}>{children}</TradesContext.Provider>;
 }

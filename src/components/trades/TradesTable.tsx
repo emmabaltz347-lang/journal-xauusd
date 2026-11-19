@@ -16,6 +16,7 @@ const COLS: { key: SortKey | null; label: string; className?: string }[] = [
   { key: null, label: 'SL', className: 'text-right' },
   { key: null, label: 'TP', className: 'text-right' },
   { key: null, label: 'Sortie', className: 'text-right' },
+  { key: null, label: 'Lots', className: 'text-right' },
   { key: 'r', label: 'R', className: 'text-right' },
   { key: 'eur', label: '€', className: 'text-right' },
   { key: null, label: 'Émotions' },
@@ -162,6 +163,7 @@ export function TradesTable({ trades, onOpen }: { trades: ComputedTrade[]; onOpe
                 <td className="num px-3 py-2 text-right text-white/50">{fmtPrice(t.stopLoss)}</td>
                 <td className="num px-3 py-2 text-right text-white/50">{fmtPrice(t.takeProfit)}</td>
                 <td className="num px-3 py-2 text-right text-white/80">{fmtPrice(t.exitPrice)}</td>
+                <td className="num px-3 py-2 text-right text-white/60">{t.lots != null ? String(t.lots).replace('.', ',') : '—'}</td>
                 <td className={`num whitespace-nowrap px-3 py-2 text-right font-semibold ${resultClass(t.r)}`}>{t.closed ? fmtR(t.r) : '…'}</td>
                 <td className={`num whitespace-nowrap px-3 py-2 text-right ${resultClass(t.pnlEur)}`}>{fmtEur(t.pnlEur, true)}</td>
                 <td className="whitespace-nowrap px-3 py-2" title={`${t.emotionBefore ?? '—'} → ${t.emotionAfter ?? '—'}`}>

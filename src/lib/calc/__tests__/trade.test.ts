@@ -5,14 +5,45 @@ import {
   computeTrades,
   inferOutcome,
   isStopValid,
+  lotsToEur,
   priceToPips,
+  riskEurFromLots,
 } from '../trade';
 import { mkTrade } from './fixtures';
 
 describe('pips XAUUSD', () => {
-  it('1 $ = 100 pips', () => {
-    expect(priceToPips(1)).toBe(100);
-    expect(priceToPips(-3.25)).toBe(325);
+  it('par défaut 1 $ = 10 pips (3903,56 → 3913,56 = 100 pips)', () => {
+    expect(priceToPips(3903.56 - 3913.56)).toBe(100);
+    expect(priceToPips(-3.25)).toBe(32.5);
+  });
+  it('convention réglable', () => expect(priceToPips(1, 100)).toBe(100));
+});
+
+describe('lots', () => {
+  const opts = { pipsPerDollar: 10, contractSize: 100, eurUsd: 1.15 };
+  it('0,10 lot × 10 $ × 100 oz = 100 $ → € au taux EUR/USD', () => {
+    expect(lotsToEur(10, 0.1, opts)).toBe(86.96);
+    expect(lotsToEur(10, 0.1, { ...opts, eurUsd: 1 })).toBe(100);
+  });
+  it('risque en € à partir du SL', () => expect(riskEurFromLots(3903.56, 3913.56, 0.1, { ...opts, eurUsd: 1 })).toBe(100));
+  it('vente au SL avec lots', () => {
+    const t = mkTrade({ direction: 'sell', entryPrice: 3903.56, stopLoss: 3913.56, takeProfit: 3883.56, exitPrice: 3913.56, lots: 0.1 });
+    const [c] = computeTrades([t], 10000, { ...opts, eurUsd: 1 });
+    expect(c.r).toBe(-1);
+    expect(c.pnlEur).toBe(-100);
+    expect(c.pnlSource).toBe('lots');
+    expect(c.riskEur).toBe(100);
+    expect(c.slPips).toBe(100);
+  });
+  it('vente au TP avec lots', () => {
+    const t = mkTrade({ direction: 'sell', entryPrice: 3903.56, stopLoss: 3913.56, takeProfit: 3883.56, exitPrice: 3883.56, lots: 0.2 });
+    expect(computeTrades([t], 10000, { ...opts, eurUsd: 1 })[0].pnlEur).toBe(400);
+  });
+  it('€ manuel prioritaire', () => {
+    const t = mkTrade({ lots: 0.1, pnlManual: 512.34 });
+    const [c] = computeTrades([t], 10000, opts);
+    expect(c.pnlEur).toBe(512.34);
+    expect(c.pnlSource).toBe('manual');
   });
 });
 

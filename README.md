@@ -137,7 +137,8 @@ Les réglages d'apparence (thème, couleurs, polices) sont aussi à faire une fo
 
 ## Utilisation
 
-- **Ajouter un trade** : sur mobile, le bouton doré **+** ; sur desktop, le menu **Ajouter**. Les boutons **TP touché / SL touché** remplissent le prix de sortie en un geste.
+- **Ajouter un trade** : sur mobile, le bouton doré **+** ; sur desktop, le menu **Ajouter**. Les boutons **TP touché / SL touché** remplissent le prix de sortie en un geste. Renseignez les **lots** pour un résultat en € exact ; sinon, le résultat est estimé à partir du % de risque.
+- **Synchronisation entre appareils** : chaque appareil (iPhone, ordinateur) doit avoir le token saisi dans ses Réglages. L'app relit GitHub quand vous revenez dessus et toutes les minutes. Le badge vert « Synchronisé » force une actualisation quand on le touche.
 - **Captures** : prise de photo, galerie, glisser-déposer ou collage (⌘V). Les images sont compressées dans le navigateur (WebP, 1 600 px de large maximum, environ 50 à 150 Ko) avant le commit.
 - **Filtres globaux** (période, sens, émotion, erreur) : ils s'appliquent aux KPI, aux graphiques et au récap. Pour une semaine, un mois, un trimestre ou une année, les flèches ‹ › permettent de naviguer d'une période à l'autre.
 - **Récap trades** (menu *Récap*, ou onglet du Dashboard) : un tableau récapitulatif par **semaine, mois ou trimestre** (nombre de trades, winrate, R, €, meilleur et pire trade) ; un clic sur une ligne filtre sur cette période. En dessous, la liste détaillée des trades.
@@ -153,9 +154,11 @@ Chaque ajout, modification ou suppression crée un commit (`➕ Ajout du trade �
 
 | Grandeur | Formule |
 |---|---|
-| Pips | 1 $ de mouvement = **100 pips** (SL de 4,00 $ = 400 pips) |
+| Pips | 1 $ de mouvement = **10 pips** par défaut (3903,56 → 3913,56 = 100 pips), réglable dans Réglages |
 | R | (sortie − entrée) / (entrée − SL) pour un achat. Pour une vente, la même formule avec le signe inversé. Le R peut être saisi à la main (case « R manuel »). |
-| € d'un trade | capital **au moment du trade** × % de risque × R |
+| € d'un trade, avec lots | mouvement en $ × lots × 100 oz ÷ taux EUR/USD (ex. 0,10 lot sur 10 $ = 100 $) ; onces par lot et taux réglables |
+| € d'un trade, sans lots | capital **au moment du trade** × % de risque × R |
+| € « exact du broker » | le montant saisi à la main est prioritaire sur les deux calculs (commissions et swap inclus) |
 | Capital au moment du trade | capital de départ + € de tous les trades précédents (dans l'ordre chronologique) |
 | Capital actuel | capital de départ + gains cumulés (tous les trades, sans filtre) |
 | Winrate | trades à R > 0 / trades clôturés |
@@ -180,6 +183,8 @@ Les euros ne sont **jamais figés** : si vous modifiez un ancien trade ou le cap
   "exitPrice": 2658.40,
   "outcome": "tp",
   "riskPercent": 1,
+  "lots": 0.1,
+  "pnlManual": null,
   "rMultiple": 2,
   "rManual": false,
   "screenshots": {

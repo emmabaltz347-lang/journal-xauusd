@@ -15,6 +15,8 @@ export function mkTrade(p: Partial<Trade> = {}): Trade {
     exitPrice: 2656,
     outcome: 'tp',
     riskPercent: 1,
+    lots: null,
+    pnlManual: null,
     rMultiple: null,
     rManual: false,
     screenshots: { before: null, after: null },

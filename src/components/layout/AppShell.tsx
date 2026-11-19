@@ -26,7 +26,7 @@ function Logo() {
 }
 
 function SyncBadge() {
-  const { mode, syncing, status } = useTrades();
+  const { mode, syncing, status, refresh, lastSync } = useTrades();
   if (syncing)
     return (
       <span className="chip border-gold/40 text-gold">
@@ -40,9 +40,13 @@ function SyncBadge() {
       </NavLink>
     );
   return (
-    <span className={`chip ${status === 'error' ? 'border-loss/40 text-loss' : 'border-gain/30 text-gain'}`}>
-      <Icon name="cloud" size={13} /> {status === 'error' ? 'Erreur GitHub' : 'Synchronisé'}
-    </span>
+    <button
+      onClick={() => void refresh()}
+      title={lastSync ? `Dernière synchro : ${lastSync.toLocaleTimeString('fr-FR')} · toucher pour actualiser` : 'Actualiser'}
+      className={`chip ${status === 'error' ? 'border-loss/40 text-loss' : 'border-gain/30 text-gain'} active:scale-95`}
+    >
+      <Icon name="refresh" size={13} /> {status === 'error' ? 'Erreur GitHub' : 'Synchronisé'}
+    </button>
   );
 }
 

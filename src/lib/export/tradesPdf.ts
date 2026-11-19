@@ -119,7 +119,7 @@ export async function exportTradesPdf({ trades, recap, recapTitle, periodLabel, 
   pdf.setFont('helvetica', 'normal');
   autoTable(pdf, {
     startY: y + 3,
-    head: [['Date', 'Heure', 'Sens', 'Entrée', 'SL', 'TP', 'Sortie', 'Risque SL', 'R', '€', 'Émotions', 'Disc.', 'Erreurs', 'Notes']],
+    head: [['Date', 'Heure', 'Sens', 'Entrée', 'SL', 'TP', 'Sortie', 'Lots', 'Risque SL', 'R', '€', 'Émotions', 'Disc.', 'Erreurs', 'Notes']],
     body: sorted.map((t) => [
       fmtDate(t.entryAt),
       fmtTime(t.entryAt),
@@ -128,6 +128,7 @@ export async function exportTradesPdf({ trades, recap, recapTitle, periodLabel, 
       clean(fmtPrice(t.stopLoss)),
       clean(fmtPrice(t.takeProfit)),
       clean(fmtPrice(t.exitPrice)),
+      t.lots != null ? String(t.lots).replace('.', ',') : '-',
       clean(fmtPips(t.slPips)),
       t.closed ? clean(fmtR(t.r)) : 'en cours',
       clean(fmtEur(t.pnlEur, true)),
@@ -140,27 +141,28 @@ export async function exportTradesPdf({ trades, recap, recapTitle, periodLabel, 
     headStyles: head,
     alternateRowStyles: { fillColor: [247, 247, 249] },
     columnStyles: {
-      0: { cellWidth: 17 },
+      0: { cellWidth: 16 },
       1: { cellWidth: 10 },
       2: { cellWidth: 11 },
-      3: { halign: 'right', cellWidth: 15 },
-      4: { halign: 'right', cellWidth: 15 },
-      5: { halign: 'right', cellWidth: 15 },
-      6: { halign: 'right', cellWidth: 15 },
-      7: { halign: 'right', cellWidth: 16 },
-      8: { halign: 'right', fontStyle: 'bold', cellWidth: 14 },
-      9: { halign: 'right', cellWidth: 18 },
-      10: { cellWidth: 30 },
-      11: { halign: 'center', cellWidth: 10 },
-      12: { cellWidth: 28 },
-      13: { cellWidth: 'auto' },
+      3: { halign: 'right', cellWidth: 14 },
+      4: { halign: 'right', cellWidth: 14 },
+      5: { halign: 'right', cellWidth: 14 },
+      6: { halign: 'right', cellWidth: 14 },
+      7: { halign: 'right', cellWidth: 10 },
+      8: { halign: 'right', cellWidth: 15 },
+      9: { halign: 'right', fontStyle: 'bold', cellWidth: 14 },
+      10: { halign: 'right', cellWidth: 18 },
+      11: { cellWidth: 28 },
+      12: { halign: 'center', cellWidth: 10 },
+      13: { cellWidth: 26 },
+      14: { cellWidth: 'auto' },
     },
     didParseCell: (d) => {
       if (d.section !== 'body') return;
       const t = sorted[d.row.index];
-      if (d.column.index === 8) d.cell.styles.textColor = colorByValue(t.r);
-      if (d.column.index === 9) d.cell.styles.textColor = colorByValue(t.pnlEur);
-      if (d.column.index === 12 && t.errorTags.length) d.cell.styles.textColor = loss;
+      if (d.column.index === 9) d.cell.styles.textColor = colorByValue(t.r);
+      if (d.column.index === 10) d.cell.styles.textColor = colorByValue(t.pnlEur);
+      if (d.column.index === 13 && t.errorTags.length) d.cell.styles.textColor = loss;
       if (d.column.index === 2) d.cell.styles.textColor = t.direction === 'buy' ? gain : loss;
     },
     margin: { left: 14, right: 14 },

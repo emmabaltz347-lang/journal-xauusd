@@ -14,6 +14,9 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultRiskPercent: 1,
   knownErrorTags: [],
   theme: DEFAULT_THEME,
+  pipsPerDollar: 10,
+  contractSize: 100,
+  eurUsd: 1.15,
 };
 
 function read<T>(key: string): T | null {

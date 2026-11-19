@@ -1,15 +1,24 @@
 import type { ComputedTrade, Direction, Trade } from '../../types/trade';
 
-/** Convention XAUUSD : 1 $ de mouvement = 100 pips */
-export const PIPS_PER_DOLLAR = 100;
+/** Paramètres de calcul, réglables dans les Réglages */
+export interface CalcOptions {
+  /** Pips pour 1 $ de mouvement (10 par défaut : 3903,56 → 3913,56 = 100 pips) */
+  pipsPerDollar: number;
+  /** Onces par lot (100 par défaut) */
+  contractSize: number;
+  /** Taux EUR/USD (1 € = x $) */
+  eurUsd: number;
+}
+
+export const DEFAULT_CALC: CalcOptions = { pipsPerDollar: 10, contractSize: 100, eurUsd: 1.15 };
 
 export const round = (n: number, d = 2) => {
   const f = 10 ** d;
   return Math.round((n + Number.EPSILON) * f) / f;
 };
 
-export function priceToPips(distance: number): number {
-  return round(Math.abs(distance) * PIPS_PER_DOLLAR, 1);
+export function priceToPips(distance: number, pipsPerDollar = DEFAULT_CALC.pipsPerDollar): number {
+  return round(Math.abs(distance) * pipsPerDollar, 1);
 }
 
 /** Signe du trade : +1 pour un achat, -1 pour une vente */
@@ -28,12 +37,7 @@ export function isTakeProfitValid(direction: Direction, entry: number, tp: numbe
  * R = (sortie - entrée) / (entrée - SL), signé selon le sens.
  * Retourne null si le calcul est impossible (risque nul, données manquantes).
  */
-export function computeR(
-  direction: Direction,
-  entry: number,
-  sl: number,
-  exit: number | null,
-): number | null {
+export function computeR(direction: Direction, entry: number, sl: number, exit: number | null): number | null {
   if (exit === null || !Number.isFinite(exit)) return null;
   const risk = (entry - sl) * sign(direction);
   if (!Number.isFinite(risk) || risk <= 0) return null;
@@ -46,7 +50,7 @@ export function plannedRR(direction: Direction, entry: number, sl: number, tp: n
   return computeR(direction, entry, sl, tp);
 }
 
-/** Déduit l'issue (TP/SL) d'un prix de sortie, à la tolérance d'un pip près */
+/** Déduit l'issue (TP/SL) d'un prix de sortie, à 1 centime près */
 export function inferOutcome(
   direction: Direction,
   entry: number,
@@ -55,16 +59,29 @@ export function inferOutcome(
   exit: number | null,
 ): 'tp' | 'sl' | null {
   if (exit === null) return null;
-  const tol = 1 / PIPS_PER_DOLLAR;
+  const tol = 0.01;
   if (Math.abs(exit - tp) <= tol) return 'tp';
   if (Math.abs(exit - sl) <= tol) return 'sl';
   const move = (exit - entry) * sign(direction);
   return move >= 0 ? 'tp' : 'sl';
 }
 
-/** € d'un trade = capital × % de risque × R */
+/** € d'un trade sans lots = capital × % de risque × R */
 export function computePnlEur(capitalBefore: number, riskPercent: number, r: number): number {
   return round(capitalBefore * (riskPercent / 100) * r, 2);
+}
+
+/**
+ * Gain/perte en € à partir des lots : mouvement en $ × onces par lot × lots, converti en €.
+ * Ex. 0,10 lot, +10 $ de mouvement, 100 oz/lot → 100 $ → 86,96 € à 1,15.
+ */
+export function lotsToEur(move: number, lots: number, opts: CalcOptions = DEFAULT_CALC): number {
+  return round((move * lots * opts.contractSize) / opts.eurUsd, 2);
+}
+
+/** Montant risqué en € pour une taille de position donnée (perte si le SL est touché) */
+export function riskEurFromLots(entry: number, sl: number, lots: number, opts: CalcOptions = DEFAULT_CALC): number {
+  return lotsToEur(Math.abs(entry - sl), lots, opts);
 }
 
 /** R effectif d'un trade : saisie manuelle prioritaire, sinon calcul */
@@ -73,31 +90,53 @@ export function effectiveR(t: Trade): number | null {
   return computeR(t.direction, t.entryPrice, t.stopLoss, t.exitPrice) ?? t.rMultiple;
 }
 
-export const byEntryDate = (a: Trade, b: Trade) =>
-  new Date(a.entryAt).getTime() - new Date(b.entryAt).getTime();
+/**
+ * Résultat en € d'un trade clôturé, par ordre de priorité :
+ * 1. montant saisi à la main, 2. calcul à partir des lots, 3. capital × % de risque × R.
+ */
+export function tradePnlEur(
+  t: Trade,
+  r: number,
+  capitalBefore: number,
+  opts: CalcOptions = DEFAULT_CALC,
+): { pnl: number; source: ComputedTrade['pnlSource'] } {
+  if (t.pnlManual != null) return { pnl: round(t.pnlManual, 2), source: 'manual' };
+  if (t.lots && t.exitPrice != null) {
+    const move = (t.exitPrice - t.entryPrice) * sign(t.direction);
+    return { pnl: lotsToEur(move, t.lots, opts), source: 'lots' };
+  }
+  return { pnl: computePnlEur(capitalBefore, t.riskPercent, r), source: 'risk' };
+}
+
+export const byEntryDate = (a: Trade, b: Trade) => new Date(a.entryAt).getTime() - new Date(b.entryAt).getTime();
 
 /**
  * Enrichit tous les trades (ordre chronologique) avec R, capital avant/après et € gagnés.
  * Le capital est chaîné : chaque trade utilise le capital laissé par le précédent.
  * Doit être appelé sur TOUS les trades (pas les trades filtrés) pour un capital juste.
  */
-export function computeTrades(trades: Trade[], startingCapital: number): ComputedTrade[] {
+export function computeTrades(trades: Trade[], startingCapital: number, opts: CalcOptions = DEFAULT_CALC): ComputedTrade[] {
   let capital = startingCapital;
   return [...trades].sort(byEntryDate).map((t) => {
     const r = effectiveR(t);
-    const closed = r !== null;
+    const closed = r !== null || t.pnlManual != null;
     const rr = r ?? 0;
-    const pnlEur = closed ? computePnlEur(capital, t.riskPercent, rr) : 0;
+    const { pnl, source } = closed ? tradePnlEur(t, rr, capital, opts) : { pnl: 0, source: 'risk' as const };
     const capitalBefore = capital;
-    capital = round(capital + pnlEur, 2);
+    capital = round(capital + pnl, 2);
+    const riskEur = t.lots
+      ? riskEurFromLots(t.entryPrice, t.stopLoss, t.lots, opts)
+      : round((capitalBefore * t.riskPercent) / 100, 2);
     return {
       ...t,
       r: rr,
       closed,
       capitalBefore,
-      pnlEur,
+      pnlEur: pnl,
+      pnlSource: source,
+      riskEur,
       capitalAfter: capital,
-      slPips: priceToPips(t.entryPrice - t.stopLoss),
+      slPips: priceToPips(t.entryPrice - t.stopLoss, opts.pipsPerDollar),
     };
   });
 }
