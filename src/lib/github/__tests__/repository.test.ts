@@ -45,6 +45,21 @@ describe('mutateTrades', () => {
     expect(puts).toBe(2);
   });
 
+  it('crée data/trades.json dans un repo de données encore vide', async () => {
+    const calls: { method: string; url: string; body?: any }[] = [];
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      calls.push({ method, url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      if (method === 'GET') return json({ message: 'Not Found' }, 404);
+      return json({ content: { sha: 'new' } }, 201);
+    });
+    await mutateTrades(cfg, (l) => [...l, mkTrade({ id: 'premier' })], 'ajout');
+    const put = calls.find((c) => c.method === 'PUT')!;
+    expect(put.url).toContain('/repos/moi/journal-xauusd/contents/data/trades.json');
+    expect(put.body.sha).toBeUndefined();
+    expect(JSON.parse(base64ToUtf8(put.body.content)).trades[0].id).toBe('premier');
+  });
+
   it('remonte une erreur 401 en français', async () => {
     vi.stubGlobal('fetch', async () => json({ message: 'Bad credentials' }, 401));
     await expect(mutateTrades(cfg, (l) => l, 'x')).rejects.toThrow(/Token invalide/);

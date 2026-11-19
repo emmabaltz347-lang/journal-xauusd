@@ -3,9 +3,6 @@ name: Build & déploiement GitHub Pages
 on:
   push:
     branches: [main]
-    # Les commits de trades (data/) faits depuis l'app ne relancent pas le déploiement
-    paths-ignore:
-      - 'data/**'
   workflow_dispatch:
 
 permissions:

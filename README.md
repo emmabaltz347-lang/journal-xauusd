@@ -3,7 +3,7 @@
 Application web personnelle pour tenir un journal de trading sur l'or (XAUUSD) : saisie des trades, captures d'écran, émotions, et un dashboard de statistiques en R.
 
 - **Vite + React + TypeScript + Tailwind**, graphiques **Recharts**
-- **Aucune base de données** : les trades sont dans `data/trades.json` et les captures dans `data/screenshots/`. L'application fait elle-même des commits dans votre repo via l'API GitHub.
+- **Aucune base de données** : les trades sont dans `data/trades.json` et les captures dans `data/screenshots/` d'un **repo GitHub privé**. L'application y fait elle-même des commits via l'API GitHub.
 - **Installable sur iPhone** (PWA), responsive Mac et mobile
 - Interface entièrement en français, heures affichées en heure de Paris
 
@@ -13,31 +13,57 @@ Exemple de PDF « Récap trades » : [docs/exemple-recap-trades.pdf](docs/exempl
 
 ---
 
-## 🔒 À lire d'abord : la confidentialité
+## 🔒 Organisation : deux repos
 
-| Élément | Visible par qui ? |
-|---|---|
-| Le **repo** (code, `data/trades.json`, captures) | Vous seule, s'il est **privé** |
-| Le **site GitHub Pages** (l'application) | **Toute personne qui a l'URL**, même si le repo est privé (sauf GitHub Enterprise Cloud) |
-| Le **token** | Uniquement le navigateur où vous l'avez saisi (localStorage) |
+```
+┌──────────────────────────────┐        ┌──────────────────────────────────┐
+│ journal-xauusd   (PUBLIC)    │        │ journal-xauusd-data   (PRIVÉ)    │
+│ le code de l'application     │        │ vos données                      │
+│ → publié sur GitHub Pages    │ token  │ data/trades.json                 │
+│ aucune donnée personnelle    │ ─────► │ data/screenshots/*.webp          │
+└──────────────────────────────┘        └──────────────────────────────────┘
+```
 
-C'est pour ça que **le site publié ne contient aucune de vos données**. Il ne contient que l'application et 20 trades fictifs de démonstration. Vos vrais trades sont lus dans le repo privé, via l'API GitHub et avec votre token. Une personne qui tomberait sur l'URL verrait seulement la démo.
+- **`journal-xauusd`** (public) contient le code. GitHub Pages le publie gratuitement à l'adresse `https://VOTRE-PSEUDO.github.io/journal-xauusd/`. Le site n'affiche que 20 trades **fictifs** de démonstration tant qu'aucun token n'est saisi.
+- **`journal-xauusd-data`** (privé) contient **vos trades et vos captures**. Personne d'autre ne peut le lire. L'application y écrit directement (un commit par trade) grâce à un token limité à ce seul repo.
+- Le **token** n'est enregistré que dans le navigateur où vous l'avez saisi (localStorage). Il n'est jamais dans le code.
 
-> ⚠️ **GitHub Pages sur un repo privé demande un abonnement payant** (GitHub Pro à environ 4 $/mois, Team ou Enterprise). Avec un compte gratuit, il existe deux options :
-> - **Option A** : un repo **public** pour le code et un **second repo privé** pour les données. Dans Réglages, vous indiquez le repo privé : le token ne donne accès qu'à celui-là.
-> - **Option B** : faire tourner l'application en local (`npm run dev`) sans Pages.
+> Le site est marqué « noindex » : les moteurs de recherche ne le référencent pas.
 
 ---
 
-## 1. Créer le repo
+## Étape 1 : créer les deux repos
 
-1. Sur GitHub : **+** → **New repository**.
-2. Nom : `journal-xauusd` (si vous en choisissez un autre, rien à modifier : le workflow s'adapte au nom du repo).
-3. Visibilité : **Private**, puis **Create repository**.
-4. Envoyez le projet depuis votre Mac :
+Créez un compte sur [github.com](https://github.com) si nécessaire, puis :
+
+**Repo n°1, l'application**
+1. Bouton **+** (en haut à droite) → **New repository**.
+2. **Repository name** : `journal-xauusd`
+3. **Public**
+4. Ne cochez **rien** d'autre (pas de README) → **Create repository**.
+
+**Repo n°2, vos données**
+1. **+** → **New repository**.
+2. **Repository name** : `journal-xauusd-data`
+3. **Private** 🔒
+4. Cochez **« Add a README file »**. C'est obligatoire : l'application a besoin que le repo contienne déjà au moins un fichier.
+5. **Create repository**.
+
+Le dossier `data/` sera créé automatiquement dans ce repo au premier trade enregistré.
+
+## Étape 2 : envoyer le code dans le repo public
+
+Dézippez le projet sur votre Mac. Évitez le glisser-déposer sur le site de GitHub : le Finder cache le dossier `.github`, qui contient le déploiement automatique, et il ne serait pas envoyé.
+
+**Avec GitHub Desktop (sans ligne de commande)**
+1. Installez [GitHub Desktop](https://desktop.github.com) et connectez-vous à votre compte.
+2. **File** → **Add Local Repository…** → choisissez le dossier `journal-xauusd`. S'il indique que ce n'est pas un repo Git, cliquez sur **create a repository** puis **Create Repository**.
+3. Cliquez sur **Publish repository**, gardez le nom `journal-xauusd` et **décochez « Keep this code private »**. Si GitHub Desktop indique que le nom existe déjà, supprimez le repo vide créé à l'étape 1 (Settings → tout en bas, **Delete this repository**) et recommencez.
+
+**Ou avec le Terminal** (remplacez `VOTRE-PSEUDO`) :
 
 ```bash
-cd journal-xauusd
+cd ~/Downloads/journal-xauusd
 ```
 
 ```bash
@@ -56,55 +82,56 @@ git remote add origin https://github.com/VOTRE-PSEUDO/journal-xauusd.git
 git push -u origin main
 ```
 
-## 2. Activer GitHub Pages
+## Étape 3 : activer GitHub Pages
 
-1. Dans le repo : **Settings** → **Pages**.
+1. Sur la page du repo **`journal-xauusd`** : **Settings** → **Pages** (menu de gauche).
 2. **Build and deployment** → **Source** : choisissez **GitHub Actions**.
-3. Ouvrez l'onglet **Actions** : le workflow « Build & déploiement GitHub Pages » démarre. S'il a échoué avant l'activation de Pages, cliquez sur **Re-run all jobs**.
-4. Au bout d'une à deux minutes, l'application est en ligne à l'adresse
-   `https://VOTRE-PSEUDO.github.io/journal-xauusd/`
+3. Ouvrez l'onglet **Actions**. Si le premier lancement est en rouge ❌ (il a démarré avant l'activation de Pages), cliquez dessus → **Re-run all jobs**.
+4. Au bout d'une à deux minutes, une coche verte ✅ apparaît. L'application est en ligne à l'adresse :
+   **`https://VOTRE-PSEUDO.github.io/journal-xauusd/`**
 
-Le site se redéploie automatiquement à chaque push sur `main`, après le passage des tests. **Les commits de trades faits depuis l'application ne déclenchent pas de redéploiement** : le dossier `data/` est ignoré par le workflow.
+Le site se met à jour tout seul à chaque modification du code. Les trades que vous enregistrez vont dans l'autre repo et ne déclenchent aucun redéploiement.
 
-## 3. Créer le token « fine-grained »
+## Étape 4 : créer le token (accès au seul repo privé)
 
-1. GitHub → photo de profil → **Settings** → **Developer settings** (tout en bas) → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
-2. **Token name** : `Journal XAUUSD`.
-3. **Expiration** : 90 jours ou 1 an (un rappel vous préviendra de le renouveler).
-4. **Repository access** : **Only select repositories**, puis choisissez **uniquement** `journal-xauusd` (ou le repo de données de l'option A).
-5. **Permissions** → **Repository permissions** → **Contents** : **Read and write**. Ne touchez à rien d'autre. *Metadata : Read-only* s'ajoute tout seul, c'est normal.
-6. **Generate token**, puis copiez la valeur (`github_pat_…`). Elle ne sera plus jamais affichée.
+1. Photo de profil → **Settings** → **Developer settings** (tout en bas à gauche) → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
+2. Remplissez :
+   - **Token name** : `Journal XAUUSD`
+   - **Expiration** : 1 an (GitHub vous préviendra par e-mail avant l'échéance)
+   - **Repository access** : **Only select repositories** → choisissez **uniquement `journal-xauusd-data`**
+   - **Permissions** → **Repository permissions** → **Contents** : **Read and write**. Ne touchez à rien d'autre. *Metadata : Read-only* s'ajoute tout seul, c'est normal.
+3. **Generate token**, puis copiez immédiatement le code `github_pat_…`. Il ne sera plus jamais affiché.
 
-Ce token ne peut que lire et écrire des fichiers dans ce seul repo. Il ne donne accès ni à vos autres repos, ni à votre compte.
+Ce token ne peut que lire et écrire des fichiers dans `journal-xauusd-data`. Il ne donne accès ni à vos autres repos, ni à votre compte.
 
-## 4. Saisir le token dans l'application
+## Étape 5 : connecter l'application
 
-1. Ouvrez l'application → **Réglages**.
+1. Ouvrez l'application → **Réglages** → **Synchronisation GitHub**.
 2. Remplissez :
    - **Propriétaire** : votre pseudo GitHub
-   - **Repo** : `journal-xauusd`
+   - **Repo de données (privé)** : `journal-xauusd-data` (pré-rempli)
    - **Branche** : `main`
    - **Token** : collez le `github_pat_…`
-3. Cliquez sur **Tester et enregistrer**. L'application vérifie l'accès et le droit d'écriture, puis affiche « Connecté ».
-4. Réglez votre **capital de départ** et votre **risque par défaut**.
+3. Cliquez sur **Tester et enregistrer**. Le message doit indiquer **« Connecté à …/journal-xauusd-data (privé ✓) »**. Si l'application signale un repo **PUBLIC**, vous avez indiqué le repo de l'application : corrigez le nom.
+4. Les trades de démo disparaissent et votre journal démarre vide. Réglez votre **capital de départ** et votre **% de risque** juste au-dessus.
 
-À répéter **une fois par appareil** (Mac, iPhone…), car le token n'est stocké que dans le navigateur. Le bouton **Oublier le token** l'efface.
+## Étape 6 : installer sur l'iPhone
 
-### Repartir de zéro (supprimer les trades d'exemple)
-
-Le repo contient 20 trades fictifs dans `data/trades.json`. Pour démarrer avec un journal vide, remplacez le contenu du fichier par :
-
-```json
-{ "version": 1, "trades": [] }
-```
-
-Vous pouvez le faire directement sur github.com (icône crayon). Vous pouvez aussi supprimer les fichiers `.svg` de `data/screenshots/`.
-
-## 5. Installer sur l'iPhone
-
-1. Ouvrez l'URL du site dans **Safari**.
+1. Ouvrez `https://VOTRE-PSEUDO.github.io/journal-xauusd/` dans **Safari**.
 2. Bouton **Partager** → **Sur l'écran d'accueil**.
-3. Ouvrez l'application depuis l'icône, puis saisissez le token dans **Réglages**. L'app installée a son propre stockage, séparé de celui de Safari.
+3. Ouvrez l'application depuis l'icône → **Réglages** → saisissez à nouveau le token. L'application installée a son propre stockage, séparé de celui de Safari.
+
+Les réglages d'apparence (thème, couleurs, polices) sont aussi à faire une fois par appareil.
+
+## En cas de problème
+
+| Message | Solution |
+|---|---|
+| « Token invalide ou expiré » | Le token a expiré ou a été mal copié : créez-en un nouveau (étape 4) et collez-le dans Réglages. |
+| « Introuvable » (404) | Vérifiez le pseudo et le nom du repo, et que le token a bien accès à `journal-xauusd-data`. |
+| « Accès refusé » (403) | La permission **Contents : Read and write** manque sur le token. |
+| Le site affiche une page 404 | GitHub Pages n'est pas activé, ou le déploiement (onglet Actions) n'est pas encore terminé. |
+| Token perdu ou volé | Supprimez-le sur GitHub (même page qu'à l'étape 4) : il cesse aussitôt de fonctionner. |
 
 ---
 
@@ -120,7 +147,7 @@ Vous pouvez le faire directement sur github.com (icône crayon). Vous pouvez aus
   - **Réglages → Exporter / Importer JSON** sert de sauvegarde.
 - **Apparence** (Réglages) : 6 thèmes prêts à l'emploi, couleurs libres (accent, gains, pertes, fond, halo), police du texte, police des chiffres et taille du texte. Ces réglages sont propres à chaque appareil.
 
-Chaque ajout, modification ou suppression crée un commit (`➕ Ajout du trade …`). L'historique Git sert donc aussi de sauvegarde. Si deux appareils enregistrent en même temps, l'application relit le fichier et réessaie automatiquement.
+Chaque ajout, modification ou suppression crée un commit (`➕ Ajout du trade …`) dans le repo privé. L'historique Git sert donc aussi de sauvegarde. Si deux appareils enregistrent en même temps, l'application relit le fichier et réessaie automatiquement.
 
 ## Règles de calcul
 
@@ -138,7 +165,7 @@ Chaque ajout, modification ou suppression crée un commit (`➕ Ajout du trade �
 
 Les euros ne sont **jamais figés** : si vous modifiez un ancien trade ou le capital de départ, tout est recalculé. Un trade sans prix de sortie est considéré comme « en cours » et exclu des statistiques.
 
-## Format d'un trade (`data/trades.json`)
+## Format d'un trade (`data/trades.json` du repo privé)
 
 ```json
 {
@@ -189,7 +216,7 @@ npm test
 npm run build
 ```
 
-`npm run demo` régénère les 20 trades fictifs et leurs captures SVG. **Attention : cette commande écrase `data/trades.json`.**
+`npm run demo` régénère les 20 trades fictifs de démonstration (`public/demo-trades.json`) et leurs captures SVG.
 
 ### Structure
 

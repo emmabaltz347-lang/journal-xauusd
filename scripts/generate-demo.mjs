@@ -1,4 +1,5 @@
-// Génère data/trades.json + public/demo-trades.json et des captures SVG fictives.
+// Génère les données de démo (public/demo-trades.json + captures SVG fictives).
+// Les vrais trades ne sont jamais dans ce repo : ils vivent dans le repo de données privé.
 // Usage : npm run demo
 import { mkdirSync, writeFileSync } from 'node:fs';
 
@@ -142,16 +143,13 @@ function chart({ direction, entry, sl, tp, exit, win }, after) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#131722"/>${grid}${zone(entry, tp, '#26a69a')}${zone(entry, sl, '#ef5350')}${body}${line(tp, '#26a69a', 'TP')}${line(entry, '#5d6680', 'E')}${line(sl, '#ef5350', 'SL')}${tag}</svg>`;
 }
 
-mkdirSync('data/screenshots', { recursive: true });
 mkdirSync('public/demo/screenshots', { recursive: true });
 for (const s of svgs) {
   for (const [kind, after] of [['avant', false], ['apres', true]]) {
     const svg = chart(s, after);
-    writeFileSync(`data/screenshots/${s.id}-${kind}.svg`, svg);
     writeFileSync(`public/demo/screenshots/${s.id}-${kind}.svg`, svg);
   }
 }
 const json = JSON.stringify({ version: 1, trades }, null, 2) + '\n';
-writeFileSync('data/trades.json', json);
 writeFileSync('public/demo-trades.json', json);
 console.log(`${trades.length} trades, ${svgs.length * 2} captures`);

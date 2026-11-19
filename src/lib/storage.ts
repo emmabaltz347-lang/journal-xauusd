@@ -8,7 +8,7 @@ const KEY_FILTERS = 'jx.filters.v1';
 export const DEFAULT_SETTINGS: Settings = {
   githubToken: '',
   owner: '',
-  repo: 'journal-xauusd',
+  repo: 'journal-xauusd-data',
   branch: 'main',
   startingCapital: 10000,
   defaultRiskPercent: 1,

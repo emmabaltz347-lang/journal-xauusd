@@ -46,8 +46,14 @@ export default function SettingsPage() {
     try {
       const info = await testAccess(cfg);
       if (!info.canPush) throw new Error("Le token peut lire le repo mais pas écrire : ajoutez la permission « Contents : Read and write ».");
+      if (
+        !info.private &&
+        !confirm(`⚠️ Le repo ${cfg.owner}/${cfg.repo} est PUBLIC : vos trades et captures seraient visibles par tout le monde.\n\nIndiquez plutôt votre repo de données privé (ex. journal-xauusd-data).\n\nContinuer quand même ?`)
+      ) {
+        return;
+      }
       update({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch, githubToken: cfg.token });
-      toast(`Connecté à ${cfg.owner}/${cfg.repo}${info.private ? ' (privé)' : ' — attention : repo PUBLIC'}`, info.private ? 'success' : 'error');
+      toast(`Connecté à ${cfg.owner}/${cfg.repo}${info.private ? ' (privé ✓)' : ' — repo PUBLIC'}`, info.private ? 'success' : 'error');
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e), 'error');
     } finally {
@@ -117,7 +123,7 @@ export default function SettingsPage() {
           <Row label="Propriétaire" hint="Votre identifiant GitHub">
             <input className="field" autoCapitalize="none" autoCorrect="off" value={gh.owner} onChange={(e) => setGh({ ...gh, owner: e.target.value })} placeholder="mon-pseudo" />
           </Row>
-          <Row label="Repo">
+          <Row label="Repo de données (privé)" hint="Pas le repo de l'application">
             <input className="field" autoCapitalize="none" autoCorrect="off" value={gh.repo} onChange={(e) => setGh({ ...gh, repo: e.target.value })} />
           </Row>
           <Row label="Branche">
