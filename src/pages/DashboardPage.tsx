@@ -25,7 +25,7 @@ export default function DashboardPage() {
     if (!ref.current) return;
     setBusy(true);
     try {
-      await fn(ref.current, tab === 'stats' ? 'dashboard' : 'trades');
+      await fn(ref.current, 'dashboard');
     } catch (e) {
       toast(`Export impossible : ${e instanceof Error ? e.message : e}`, 'error');
     } finally {
@@ -39,6 +39,7 @@ export default function DashboardPage() {
         title="Dashboard"
         subtitle={openCount ? `${openCount} trade${openCount > 1 ? 's' : ''} en cours non comptabilisé${openCount > 1 ? 's' : ''}` : 'Statistiques en R'}
         actions={
+          tab === 'stats' && (
           <div className="flex gap-2" data-no-export>
             <button className="btn-ghost !px-3" disabled={busy} onClick={() => run(exportPdf)}>
               <Icon name="download" size={16} /> PDF
@@ -47,6 +48,7 @@ export default function DashboardPage() {
               <Icon name="image" size={16} /> JPG
             </button>
           </div>
+          )
         }
       />
 
@@ -59,7 +61,7 @@ export default function DashboardPage() {
           onChange={setTab}
           options={[
             { value: 'stats', label: 'Statistiques' },
-            { value: 'trades', label: 'Tableau des trades' },
+            { value: 'trades', label: 'Récap trades' },
           ]}
         />
       </div>

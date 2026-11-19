@@ -3,12 +3,13 @@ import { useStats } from '../../hooks/useStats';
 import { fmtCompactR, fmtPct, fmtR } from '../../lib/format';
 import type { GroupedR } from '../../lib/calc/distribution';
 import { GlassCard } from '../ui/GlassCard';
-import { C, EmptyChart, GlassTooltip, SignedBar, axisProps } from './chartParts';
+import { EmptyChart, GlassTooltip, SignedBar, axisProps, useChartColors } from './chartParts';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 export function RDistributionChart() {
   const { histogram } = useStats();
   const reduced = useReducedMotion();
+  const C = useChartColors();
   return (
     <GlassCard delay={0.2} title="Distribution des résultats (R)">
       {!histogram.length ? (
@@ -33,7 +34,7 @@ export function RDistributionChart() {
                   );
                 }}
               />
-              <Bar dataKey="count" isAnimationActive={!reduced} shape={<SignedBar positive />}>
+              <Bar dataKey="count" isAnimationActive={!reduced} shape={<SignedBar positive colors={C} />}>
                 {histogram.map((b) => (
                   <Cell key={b.label} fill={b.from >= 0 ? C.gain : C.loss} />
                 ))}
@@ -48,6 +49,7 @@ export function RDistributionChart() {
 
 function GroupedChart({ data, title, delay, xLabel }: { data: GroupedR[]; title: string; delay: number; xLabel: (g: GroupedR) => string }) {
   const reduced = useReducedMotion();
+  const C = useChartColors();
   const has = data.some((d) => d.count > 0);
   return (
     <GlassCard delay={delay} title={title}>
@@ -78,7 +80,7 @@ function GroupedChart({ data, title, delay, xLabel }: { data: GroupedR[]; title:
                   );
                 }}
               />
-              <Bar dataKey="totalR" isAnimationActive={!reduced} shape={<SignedBar />} />
+              <Bar dataKey="totalR" isAnimationActive={!reduced} shape={<SignedBar colors={C} />} />
             </BarChart>
           </ResponsiveContainer>
         </div>

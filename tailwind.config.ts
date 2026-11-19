@@ -1,19 +1,22 @@
 import type { Config } from 'tailwindcss';
 
+// Les couleurs viennent de variables CSS (réglables dans l'app, voir src/lib/theme.ts)
+const v = (name: string) => `rgb(var(${name}) / <alpha-value>)`;
+
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        night: { 900: '#070a1f', 800: '#0b0f2a', 700: '#141a45' },
-        violet: { deep: '#2a1250' },
-        gold: { DEFAULT: '#E6C068', soft: '#f0d594', dim: '#9c8247' },
-        gain: { DEFAULT: '#34d399', dim: '#10b981' },
-        loss: { DEFAULT: '#ff6b6b', dim: '#f0525a' },
+        night: { 900: v('--c-bg-from'), 800: v('--c-bg-mid'), 700: v('--c-bg-to') },
+        gold: { DEFAULT: v('--c-accent'), light: v('--c-accent-light'), dark: v('--c-accent-dark') },
+        onaccent: v('--c-on-accent'),
+        gain: { DEFAULT: v('--c-gain') },
+        loss: { DEFAULT: v('--c-loss') },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        sans: ['var(--font-text)'],
+        mono: ['var(--font-num)'],
       },
       borderRadius: { glass: '20px' },
       boxShadow: { glass: '0 8px 32px rgba(0,0,0,0.35)' },

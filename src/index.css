@@ -4,9 +4,6 @@
 
 :root {
   color-scheme: dark;
-  --gold: #e6c068;
-  --gain: #34d399;
-  --loss: #ff6b6b;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -25,7 +22,7 @@ body {
 .num {
   @apply font-mono;
   font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum', 'zero';
+  font-feature-settings: 'tnum';
 }
 
 @layer components {
@@ -49,7 +46,7 @@ body {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-gold {
-    @apply btn bg-gradient-to-b from-[#f0d594] to-[#c9a14c] text-night-900 shadow-[0_6px_20px_rgba(230,192,104,0.25)] hover:brightness-105;
+    @apply btn bg-gradient-to-b from-gold-light to-gold-dark text-onaccent shadow-[0_6px_20px_rgb(var(--c-accent)/0.22)] hover:brightness-105;
   }
   .btn-ghost {
     @apply btn border border-white/15 bg-white/[0.06] text-white/85 hover:bg-white/[0.12];
@@ -68,12 +65,12 @@ body {
   inset: -20%;
   z-index: -1;
   background:
-    radial-gradient(40% 35% at 20% 25%, rgba(42, 18, 80, 0.95), transparent 70%),
-    radial-gradient(35% 30% at 80% 20%, rgba(20, 26, 69, 0.95), transparent 70%),
-    radial-gradient(30% 25% at 70% 80%, rgba(74, 32, 120, 0.6), transparent 70%),
-    radial-gradient(18% 14% at 30% 75%, rgba(230, 192, 104, 0.10), transparent 70%),
-    radial-gradient(12% 10% at 85% 55%, rgba(230, 192, 104, 0.07), transparent 70%),
-    linear-gradient(160deg, #070a1f 0%, #0b0f2a 45%, #1a0f3a 100%);
+    radial-gradient(40% 35% at 20% 25%, rgb(var(--c-glow) / 0.85), transparent 70%),
+    radial-gradient(35% 30% at 80% 20%, rgb(var(--c-bg-to) / 0.9), transparent 70%),
+    radial-gradient(30% 25% at 70% 80%, rgb(var(--c-glow) / 0.55), transparent 70%),
+    radial-gradient(18% 14% at 30% 75%, rgb(var(--c-accent) / 0.09), transparent 70%),
+    radial-gradient(12% 10% at 85% 55%, rgb(var(--c-accent) / 0.06), transparent 70%),
+    linear-gradient(160deg, rgb(var(--c-bg-from)) 0%, rgb(var(--c-bg-mid)) 50%, rgb(var(--c-bg-to)) 100%);
   animation: aurora 60s ease-in-out infinite alternate;
   will-change: transform;
 }
@@ -101,7 +98,7 @@ body {
 
 /* Recharts */
 .recharts-cartesian-grid line { stroke: rgba(255, 255, 255, 0.06); }
-.recharts-text { fill: rgba(255, 255, 255, 0.5); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+.recharts-text { fill: rgba(255, 255, 255, 0.5); font-size: 11px; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .recharts-surface:focus, .recharts-wrapper:focus { outline: none; }
 
 input[type='datetime-local']::-webkit-calendar-picker-indicator,

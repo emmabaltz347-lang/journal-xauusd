@@ -1,4 +1,5 @@
 import type { Settings, Trade } from '../types/trade';
+import { DEFAULT_THEME } from './theme';
 
 const KEY_SETTINGS = 'jx.settings.v1';
 const KEY_LOCAL_TRADES = 'jx.localTrades.v1';
@@ -12,6 +13,7 @@ export const DEFAULT_SETTINGS: Settings = {
   startingCapital: 10000,
   defaultRiskPercent: 1,
   knownErrorTags: [],
+  theme: DEFAULT_THEME,
 };
 
 function read<T>(key: string): T | null {
@@ -32,7 +34,10 @@ function write(key: string, value: unknown): boolean {
   }
 }
 
-export const loadSettings = (): Settings => ({ ...DEFAULT_SETTINGS, ...(read<Settings>(KEY_SETTINGS) ?? {}) });
+export const loadSettings = (): Settings => {
+  const saved = read<Partial<Settings>>(KEY_SETTINGS) ?? {};
+  return { ...DEFAULT_SETTINGS, ...saved, theme: { ...DEFAULT_THEME, ...(saved.theme ?? {}) } };
+};
 export const saveSettings = (s: Settings) => write(KEY_SETTINGS, s);
 
 /** Trades du mode local (sans token) */

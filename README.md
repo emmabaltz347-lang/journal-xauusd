@@ -9,6 +9,8 @@ Application web personnelle pour tenir un journal de trading sur l'or (XAUUSD) :
 
 ![Dashboard](docs/captures/desktop-dashboard.jpg)
 
+Exemple de PDF « Récap trades » : [docs/exemple-recap-trades.pdf](docs/exemple-recap-trades.pdf)
+
 ---
 
 ## 🔒 À lire d'abord : la confidentialité
@@ -110,8 +112,13 @@ Vous pouvez le faire directement sur github.com (icône crayon). Vous pouvez aus
 
 - **Ajouter un trade** : sur mobile, le bouton doré **+** ; sur desktop, le menu **Ajouter**. Les boutons **TP touché / SL touché** remplissent le prix de sortie en un geste.
 - **Captures** : prise de photo, galerie, glisser-déposer ou collage (⌘V). Les images sont compressées dans le navigateur (WebP, 1 600 px de large maximum, environ 50 à 150 Ko) avant le commit.
-- **Filtres globaux** (période, sens, émotion, erreur) : ils s'appliquent aux KPI, aux graphiques et au tableau.
-- **Secours** : Réglages → Exporter / Importer JSON. Dashboard → export **PDF** ou **JPG** de la vue affichée.
+- **Filtres globaux** (période, sens, émotion, erreur) : ils s'appliquent aux KPI, aux graphiques et au récap. Pour une semaine, un mois, un trimestre ou une année, les flèches ‹ › permettent de naviguer d'une période à l'autre.
+- **Récap trades** (menu *Récap*, ou onglet du Dashboard) : un tableau récapitulatif par **semaine, mois ou trimestre** (nombre de trades, winrate, R, €, meilleur et pire trade) ; un clic sur une ligne filtre sur cette période. En dessous, la liste détaillée des trades.
+- **Exports** :
+  - le bouton **Télécharger le PDF** du Récap produit un vrai document A4 : synthèse, récap par période et détail de chaque trade, en respectant les filtres actifs ;
+  - le Dashboard s'exporte en **PDF** ou **JPG** tel qu'il est affiché ;
+  - **Réglages → Exporter / Importer JSON** sert de sauvegarde.
+- **Apparence** (Réglages) : 6 thèmes prêts à l'emploi, couleurs libres (accent, gains, pertes, fond, halo), police du texte, police des chiffres et taille du texte. Ces réglages sont propres à chaque appareil.
 
 Chaque ajout, modification ou suppression crée un commit (`➕ Ajout du trade …`). L'historique Git sert donc aussi de sauvegarde. Si deux appareils enregistrent en même temps, l'application relit le fichier et réessaie automatiquement.
 
@@ -194,12 +201,14 @@ src/
 │   ├── stats.ts            winrate, espérance, PF, séries, courbe d'equity
 │   ├── drawdown.ts         drawdown en R et en %
 │   ├── distribution.ts     histogramme, résultats par jour et par heure (Paris)
-│   ├── filters.ts          filtres globaux
+│   ├── filters.ts          filtres globaux et navigation par période
+│   ├── recap.ts            récap par semaine / mois / trimestre
 │   └── paris.ts            fuseau Europe/Paris (heure d'été comprise)
 ├── lib/github/             API contents : lecture, commit, gestion des conflits
 ├── lib/image/compress.ts   WebP, 1 600 px maximum
-├── lib/export/             JSON, PDF, JPG
+├── lib/export/             JSON, PDF (dashboard et récap trades), JPG
+├── lib/theme.ts            thèmes, couleurs et polices réglables
 ├── hooks/                  état global (trades, réglages, filtres), compteurs animés
 ├── components/             layout, ui, dashboard, trades, formulaire
-└── pages/                  Dashboard, Trades, Ajouter/Modifier, Réglages
+└── pages/                  Dashboard, Récap trades, Ajouter/Modifier, Réglages
 ```

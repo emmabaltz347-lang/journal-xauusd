@@ -4,7 +4,7 @@ import { useStats } from '../../hooks/useStats';
 import { fmtCompactR, fmtDateShort, fmtEur, fmtEurShort, fmtR } from '../../lib/format';
 import { GlassCard } from '../ui/GlassCard';
 import { Segmented } from '../ui/Segmented';
-import { C, EmptyChart, GlassTooltip, axisProps } from './chartParts';
+import { EmptyChart, GlassTooltip, axisProps, useChartColors } from './chartParts';
 import type { EquityPoint } from '../../lib/calc/stats';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 
@@ -14,6 +14,7 @@ export function EquityChart() {
   const { equity } = useStats();
   const [unit, setUnit] = useState<Unit>('R');
   const reduced = useReducedMotion();
+  const C = useChartColors();
   const start = equity[0]?.capital ?? 0;
   const data = equity.map((p) => ({ ...p, gainEur: Math.round((p.capital - start) * 100) / 100 }));
   const valueKey = unit === 'R' ? 'cumR' : 'gainEur';
@@ -101,7 +102,7 @@ export function EquityChart() {
                   strokeWidth={2}
                   fill="url(#eqFill)"
                   dot={false}
-                  activeDot={{ r: 5, stroke: '#0b0f2a', strokeWidth: 2, fill: C.gold }}
+                  activeDot={{ r: 5, stroke: C.bg, strokeWidth: 2, fill: C.gold }}
                   isAnimationActive={!reduced}
                   animationDuration={1200}
                   name="Equity"

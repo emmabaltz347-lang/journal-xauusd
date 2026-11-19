@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { applyTheme } from '../lib/theme';
 import type { Settings } from '../types/trade';
 import { loadSettings, saveSettings } from '../lib/storage';
 import type { RepoConfig } from '../lib/github/client';
@@ -13,6 +14,8 @@ const SettingsContext = createContext<Ctx | null>(null);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(loadSettings);
+
+  useEffect(() => applyTheme(settings.theme), [settings.theme]);
 
   const update = useCallback((patch: Partial<Settings>) => {
     setSettings((s) => {

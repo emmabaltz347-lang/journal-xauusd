@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { useFilters } from '../../hooks/useFilters';
 import { useTrades } from '../../hooks/useTrades';
-import { isFiltered, type PeriodKind } from '../../lib/calc/filters';
+import { isCurrentPeriod, isFiltered, periodLabel, shiftAnchor, type PeriodKind } from '../../lib/calc/filters';
+import { Icon } from '../ui/Icon';
 import { EMOTIONS, EMOTION_EMOJI } from '../../types/trade';
 
 const PERIODS: { value: PeriodKind; label: string }[] = [
@@ -27,15 +28,31 @@ export function FilterBar() {
         {PERIODS.map((p) => (
           <button
             key={p.value}
-            onClick={() => set({ period: p.value })}
+            onClick={() => set({ period: p.value, anchor: null })}
             className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-              f.period === p.value ? 'bg-gold/90 text-night-900' : 'text-white/60 hover:bg-white/[0.06] hover:text-white'
+              f.period === p.value ? 'bg-gold text-onaccent' : 'text-white/60 hover:bg-white/[0.06] hover:text-white'
             }`}
           >
             {p.label}
           </button>
         ))}
       </div>
+      {f.period !== 'all' && f.period !== 'custom' && (
+        <div className="mt-2 flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
+          <button className="rounded-lg p-2 text-white/60 hover:bg-white/[0.08] hover:text-white" onClick={() => set({ anchor: shiftAnchor(f, -1) })} aria-label="Période précédente">
+            <Icon name="chevron" size={16} className="rotate-180" />
+          </button>
+          <div className="flex-1 text-center text-sm font-medium text-white">{periodLabel(f)}</div>
+          {!isCurrentPeriod(f) && (
+            <button className="rounded-lg px-2 py-1 text-xs text-gold hover:bg-white/[0.08]" onClick={() => set({ anchor: null })}>
+              Aujourd'hui
+            </button>
+          )}
+          <button className="rounded-lg p-2 text-white/60 hover:bg-white/[0.08] hover:text-white" onClick={() => set({ anchor: shiftAnchor(f, 1) })} aria-label="Période suivante">
+            <Icon name="chevron" size={16} />
+          </button>
+        </div>
+      )}
       <div className="mt-2 grid grid-cols-3 items-center gap-2 md:flex md:flex-wrap">
         {f.period === 'custom' && (
           <>
@@ -45,12 +62,12 @@ export function FilterBar() {
           </>
         )}
         <select className={sel} value={f.direction} onChange={(e) => set({ direction: e.target.value as typeof f.direction })} aria-label="Sens">
-          <option value="all">Achat + Vente</option>
+          <option value="all">Tous sens</option>
           <option value="buy">Achats</option>
           <option value="sell">Ventes</option>
         </select>
         <select className={sel} value={f.emotion} onChange={(e) => set({ emotion: e.target.value as typeof f.emotion })} aria-label="Émotion">
-          <option value="all">Toutes émotions</option>
+          <option value="all">Émotions</option>
           {EMOTIONS.map((e) => (
             <option key={e} value={e}>
               {EMOTION_EMOJI[e]} {e}
@@ -58,7 +75,7 @@ export function FilterBar() {
           ))}
         </select>
         <select className={sel} value={f.errorTag} onChange={(e) => set({ errorTag: e.target.value })} aria-label="Erreur">
-          <option value="all">Toutes erreurs</option>
+          <option value="all">Erreurs</option>
           <option value="none">Sans erreur</option>
           {tags.map((t) => (
             <option key={t} value={t}>

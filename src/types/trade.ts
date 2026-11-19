@@ -68,6 +68,8 @@ export const TradesFileSchema = z.object({
 });
 export type TradesFile = z.infer<typeof TradesFileSchema>;
 
+import type { Theme } from '../lib/theme';
+
 export interface Settings {
   githubToken: string;
   owner: string;
@@ -76,6 +78,7 @@ export interface Settings {
   startingCapital: number;
   defaultRiskPercent: number;
   knownErrorTags: string[];
+  theme: Theme;
 }
 
 /** Trade enrichi par les calculs (jamais stocké) */

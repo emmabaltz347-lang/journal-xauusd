@@ -261,7 +261,7 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
                 <label className="flex cursor-pointer items-center gap-2 text-xs text-white/60">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 accent-[#E6C068]"
+                    className="h-4 w-4 accent-gold"
                     checked={d.rManual}
                     onChange={(e) => setD((x) => ({ ...x, rManual: e.target.checked, rMultiple: x.rMultiple || toInput(autoR) }))}
                   />

@@ -128,7 +128,7 @@ export function TradesTable({ trades, onOpen }: { trades: ComputedTrade[]; onOpe
               {COLS.map((c, i) => (
                 <th key={i} className={`whitespace-nowrap px-3 py-3 font-medium ${c.className ?? ''}`}>
                   {c.key ? (
-                    <button onClick={() => toggle(c.key!)} className={`inline-flex items-center gap-1 hover:text-white ${sort.key === c.key ? 'text-gold' : ''}`}>
+                    <button onClick={() => toggle(c.key!)} className={`inline-flex items-center gap-1 uppercase tracking-wider hover:text-white ${sort.key === c.key ? 'text-gold' : ''}`}>
                       {c.label}
                       <Icon name={sort.key === c.key ? (sort.dir === 1 ? 'up' : 'down') : 'sort'} size={12} />
                     </button>

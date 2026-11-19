@@ -4,7 +4,7 @@ import { useTrades } from '../../hooks/useTrades';
 
 const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/', label: 'Dashboard', icon: 'dashboard', end: true },
-  { to: '/trades', label: 'Trades', icon: 'list' },
+  { to: '/trades', label: 'Récap', icon: 'list' },
   { to: '/ajouter', label: 'Ajouter', icon: 'plus' },
   { to: '/reglages', label: 'Réglages', icon: 'settings' },
 ];
@@ -12,7 +12,11 @@ const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
 function Logo() {
   return (
     <div className="flex items-center gap-3">
-      <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-9 w-9" />
+      <svg viewBox="0 0 64 64" className="h-9 w-9" aria-hidden="true">
+        <rect width="64" height="64" rx="14" className="fill-white/[0.08]" />
+        <path d="M12 44 L24 32 L32 38 L50 18" fill="none" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" style={{ stroke: 'rgb(var(--c-accent))' }} />
+        <circle cx="50" cy="18" r="4" style={{ fill: 'rgb(var(--c-accent))' }} />
+      </svg>
       <div className="leading-tight">
         <div className="text-sm font-semibold text-white">Journal Or</div>
         <div className="num text-[11px] tracking-widest text-gold">XAUUSD</div>
@@ -91,7 +95,7 @@ export default function AppShell() {
       {!onForm && (
         <button
           onClick={() => navigate('/ajouter')}
-          className="fixed right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-b from-[#f3dba0] to-[#c69c45] text-night-900 shadow-[0_10px_30px_rgba(230,192,104,0.45)] transition active:scale-90 md:hidden"
+          className="fixed right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-b from-gold-light to-gold-dark text-onaccent shadow-[0_10px_30px_rgb(var(--c-accent)/0.4)] transition active:scale-90 md:hidden"
           style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}
           aria-label="Ajouter un trade"
         >

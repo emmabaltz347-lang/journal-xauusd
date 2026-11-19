@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useFilters } from '../../hooks/useFilters';
-import { TradesTable } from './TradesTable';
+import { TradesRecap } from './TradesRecap';
 import { TradeDetailModal } from './TradeDetailModal';
 
-/** Tableau filtré + fenêtre de détail (onglet du dashboard) */
+/** Onglet « Récap trades » du dashboard, avec fenêtre de détail */
 export function TradesView() {
   const { filtered } = useFilters();
   const [openId, setOpenId] = useState<string | null>(null);
   const open = useMemo(() => filtered.find((t) => t.id === openId) ?? null, [filtered, openId]);
   return (
     <>
-      <TradesTable trades={filtered} onOpen={(t) => setOpenId(t.id)} />
+      <TradesRecap onOpen={(t) => setOpenId(t.id)} />
       <TradeDetailModal trade={open} onClose={() => setOpenId(null)} />
     </>
   );

@@ -1,17 +1,18 @@
 import type { ReactNode } from 'react';
 
-export const C = {
-  gold: '#E6C068',
-  gain: '#34d399',
-  loss: '#ff6b6b',
-  axis: 'rgba(255,255,255,0.45)',
-  grid: 'rgba(255,255,255,0.06)',
-};
+import { useSettings } from '../../hooks/useSettings';
+
+/** Couleurs des graphiques, issues du thème choisi dans les Réglages */
+export function useChartColors() {
+  const { theme } = useSettings().settings;
+  return { gold: theme.accent, gain: theme.gain, loss: theme.loss, bg: theme.bgFrom, axis: 'rgba(255,255,255,0.45)' };
+}
+export type ChartColors = ReturnType<typeof useChartColors>;
 
 export const axisProps = {
   tickLine: false,
   axisLine: false,
-  tick: { fill: C.axis, fontSize: 11 },
+  tick: { fill: 'rgba(255,255,255,0.45)', fontSize: 11 },
 } as const;
 
 /** Tooltip en verre */
@@ -44,6 +45,7 @@ export function SignedBar(props: {
   value?: number | number[];
   fill?: string;
   positive?: boolean;
+  colors?: ChartColors;
 }) {
   const { x = 0, y = 0, width = 0, height = 0 } = props;
   const raw = Array.isArray(props.value) ? props.value[1] : props.value;
@@ -52,7 +54,7 @@ export function SignedBar(props: {
   const h = Math.abs(height);
   if (h < 0.5 || width <= 0) return null;
   const r = Math.min(4, width / 2, h);
-  const fill = props.fill ?? (positive ? C.gain : C.loss);
+  const fill = props.fill ?? (positive ? props.colors?.gain : props.colors?.loss);
   const d = positive
     ? `M${x},${top + h} V${top + r} Q${x},${top} ${x + r},${top} H${x + width - r} Q${x + width},${top} ${x + width},${top + r} V${top + h} Z`
     : `M${x},${top} V${top + h - r} Q${x},${top + h} ${x + r},${top + h} H${x + width - r} Q${x + width},${top + h} ${x + width},${top + h - r} V${top} Z`;

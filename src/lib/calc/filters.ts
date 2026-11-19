@@ -4,6 +4,8 @@ export type PeriodKind = 'all' | 'week' | 'month' | 'quarter' | 'year' | 'custom
 
 export interface Filters {
   period: PeriodKind;
+  /** Date (AAAA-MM-JJ) incluse dans la période affichée ; null = période en cours */
+  anchor: string | null;
   from: string | null; // AAAA-MM-JJ (période personnalisée)
   to: string | null;
   direction: Direction | 'all';
@@ -13,6 +15,7 @@ export interface Filters {
 
 export const DEFAULT_FILTERS: Filters = {
   period: 'all',
+  anchor: null,
   from: null,
   to: null,
   direction: 'all',
@@ -21,7 +24,8 @@ export const DEFAULT_FILTERS: Filters = {
 };
 
 /** Bornes [début, fin[ de la période courante, calculées en heure locale du navigateur */
-export function periodRange(f: Filters, now = new Date()): [Date, Date] | null {
+export function periodRange(f: Filters, today = new Date()): [Date, Date] | null {
+  const now = f.anchor ? new Date(`${f.anchor}T12:00:00`) : today;
   const y = now.getFullYear();
   const m = now.getMonth();
   switch (f.period) {
@@ -69,4 +73,54 @@ export function isFiltered(f: Filters): boolean {
   return (
     f.period !== 'all' || f.direction !== 'all' || f.emotion !== 'all' || f.errorTag !== 'all'
   );
+}
+
+const toYmd = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Décale la période affichée de `step` semaines / mois / trimestres / années */
+export function shiftAnchor(f: Filters, step: number, today = new Date()): string | null {
+  const range = periodRange(f, today);
+  if (!range || f.period === 'custom' || f.period === 'all') return f.anchor;
+  const d = new Date(range[0]);
+  if (f.period === 'week') d.setDate(d.getDate() + 7 * step);
+  if (f.period === 'month') d.setMonth(d.getMonth() + step);
+  if (f.period === 'quarter') d.setMonth(d.getMonth() + 3 * step);
+  if (f.period === 'year') d.setFullYear(d.getFullYear() + step);
+  return toYmd(d);
+}
+
+const MONTHS = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
+const DAY_MONTH = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
+const FULL = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+
+/** Libellé lisible de la période filtrée, ex. « Semaine du 16 au 22 nov. 2026 » */
+export function periodLabel(f: Filters, today = new Date()): string {
+  const range = periodRange(f, today);
+  if (!range) return 'Tous les trades';
+  const [s, e] = range;
+  const last = new Date(e.getTime() - 86400000);
+  switch (f.period) {
+    case 'week':
+      return s.getMonth() === last.getMonth()
+        ? `Semaine du ${s.getDate()} au ${FULL.format(last)}`
+        : `Semaine du ${DAY_MONTH.format(s)} au ${FULL.format(last)}`;
+    case 'month': {
+      const m = MONTHS.format(s);
+      return m.charAt(0).toUpperCase() + m.slice(1);
+    }
+    case 'quarter':
+      return `T${Math.floor(s.getMonth() / 3) + 1} ${s.getFullYear()}`;
+    case 'year':
+      return `Année ${s.getFullYear()}`;
+    default:
+      return `Du ${f.from ? FULL.format(s) : '…'} au ${f.to ? FULL.format(last) : '…'}`;
+  }
+}
+
+/** La période affichée est-elle la période en cours ? */
+export function isCurrentPeriod(f: Filters, today = new Date()): boolean {
+  const a = periodRange(f, today);
+  const b = periodRange({ ...f, anchor: null }, today);
+  return !a || !b || a[0].getTime() === b[0].getTime();
 }

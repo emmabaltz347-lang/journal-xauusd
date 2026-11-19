@@ -3,6 +3,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Icon } from '../components/ui/Icon';
 import { TagInput } from '../components/ui/TagInput';
+import { AppearanceSettings } from '../components/settings/AppearanceSettings';
 import { useSettings } from '../hooks/useSettings';
 import { useTrades } from '../hooks/useTrades';
 import { useToast } from '../hooks/useToast';
@@ -82,7 +83,23 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <PageHeader title="Réglages" subtitle="Stockés uniquement dans ce navigateur" />
+      <PageHeader title="Réglages" subtitle="Capital, risque, apparence et synchronisation · stockés dans ce navigateur" />
+
+      <GlassCard title="Capital & risque" >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Row label="Capital de départ (€)" hint="Le capital actuel = départ + gains cumulés. Les € de chaque trade sont recalculés.">
+            <input className="field num" inputMode="decimal" value={capital} onChange={(e) => setCapital(e.target.value)} />
+          </Row>
+          <Row label="Risque par défaut (%)" hint="Pré-rempli dans le formulaire, modifiable trade par trade.">
+            <input className="field num" inputMode="decimal" value={risk} onChange={(e) => setRisk(e.target.value)} />
+          </Row>
+        </div>
+        <button className="btn-gold mt-4" onClick={saveTrading}>
+          Enregistrer
+        </button>
+      </GlassCard>
+
+      <AppearanceSettings />
 
       <GlassCard
         title={
@@ -145,20 +162,6 @@ export default function SettingsPage() {
         </div>
       </GlassCard>
 
-      <GlassCard title="Capital & risque" delay={0.05}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Row label="Capital de départ (€)" hint="Le capital actuel = départ + gains cumulés. Les € de chaque trade sont recalculés.">
-            <input className="field num" inputMode="decimal" value={capital} onChange={(e) => setCapital(e.target.value)} />
-          </Row>
-          <Row label="Risque par défaut (%)" hint="Pré-rempli dans le formulaire, modifiable trade par trade.">
-            <input className="field num" inputMode="decimal" value={risk} onChange={(e) => setRisk(e.target.value)} />
-          </Row>
-        </div>
-        <button className="btn-gold mt-4" onClick={saveTrading}>
-          Enregistrer
-        </button>
-      </GlassCard>
-
       <GlassCard title="Tags d'erreur proposés" delay={0.1}>
         <p className="mb-3 text-xs text-white/50">
           Les tags par défaut et ceux déjà utilisés dans vos trades sont toujours proposés. Ajoutez ici vos propres tags récurrents.
@@ -186,7 +189,7 @@ export default function SettingsPage() {
         </div>
         <p className="mt-2 text-[11px] text-white/45">
           L'export JSON contient les chemins des captures, pas les images elles-mêmes (elles restent dans <code>data/screenshots/</code>). Les exports PDF et JPG
-          sont sur le Dashboard.
+          sont sur le Dashboard et dans le Récap trades.
         </p>
         {mode === 'local' && (
           <button

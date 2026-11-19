@@ -26,7 +26,7 @@ export function Segmented<T extends string>({
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
           className={`rounded-lg font-medium transition ${size === 'lg' ? 'flex-1 px-5 py-3 text-base' : 'px-3 py-1.5 text-xs'} ${
-            value === o.value ? 'bg-gold/90 text-night-900 shadow' : 'text-white/60 hover:text-white'
+            value === o.value ? 'bg-gold text-onaccent shadow' : 'text-white/60 hover:text-white'
           }`}
         >
           {o.label}
