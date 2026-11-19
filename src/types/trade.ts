@@ -48,6 +48,8 @@ export const TradeSchema = z.object({
   lots: z.number().positive().nullable().default(null),
   /** Résultat en € saisi à la main (montant exact du broker), prioritaire sur le calcul */
   pnlManual: z.number().nullable().default(null),
+  /** Taux EUR/USD utilisé pour ce trade (figé à l'enregistrement) */
+  eurUsd: z.number().positive().nullable().default(null),
   rMultiple: z.number().nullable(),
   rManual: z.boolean(),
   screenshots: z.object({
@@ -99,7 +101,7 @@ export interface ComputedTrade extends Trade {
   capitalAfter: number;
   slPips: number;
   closed: boolean;
-  /** Montant risqué en € (perte si le SL est touché) */
+  /** Montant risqué prévu en € (capital × % de risque saisi) */
   riskEur: number;
   /** Origine du résultat en € */
   pnlSource: 'manual' | 'lots' | 'risk';

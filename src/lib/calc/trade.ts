@@ -103,7 +103,7 @@ export function tradePnlEur(
   if (t.pnlManual != null) return { pnl: round(t.pnlManual, 2), source: 'manual' };
   if (t.lots && t.exitPrice != null) {
     const move = (t.exitPrice - t.entryPrice) * sign(t.direction);
-    return { pnl: lotsToEur(move, t.lots, opts), source: 'lots' };
+    return { pnl: lotsToEur(move, t.lots, { ...opts, eurUsd: t.eurUsd ?? opts.eurUsd }), source: 'lots' };
   }
   return { pnl: computePnlEur(capitalBefore, t.riskPercent, r), source: 'risk' };
 }
@@ -124,9 +124,8 @@ export function computeTrades(trades: Trade[], startingCapital: number, opts: Ca
     const { pnl, source } = closed ? tradePnlEur(t, rr, capital, opts) : { pnl: 0, source: 'risk' as const };
     const capitalBefore = capital;
     capital = round(capital + pnl, 2);
-    const riskEur = t.lots
-      ? riskEurFromLots(t.entryPrice, t.stopLoss, t.lots, opts)
-      : round((capitalBefore * t.riskPercent) / 100, 2);
+    // risque prévu = capital × % de risque saisi (indépendant des lots)
+    const riskEur = round((capitalBefore * t.riskPercent) / 100, 2);
     return {
       ...t,
       r: rr,

@@ -94,7 +94,7 @@ export function TradeDetailModal({ trade, onClose }: { trade: ComputedTrade | nu
             <Info label="Sortie">{fmtPrice(t.exitPrice)}</Info>
             <Info label="Risque SL">{fmtPips(t.slPips)}</Info>
             <Info label="R:R prévu">{(() => { const rr = plannedRR(t.direction, t.entryPrice, t.stopLoss, t.takeProfit); return rr == null ? '—' : fmtR(rr); })()}</Info>
-            <Info label="Lots">{t.lots != null ? String(t.lots).replace('.', ',') : '—'}</Info>
+            <Info label="Lots · EUR/USD">{t.lots != null ? `${String(t.lots).replace('.', ',')} · ${String(t.eurUsd ?? '—').replace('.', ',')}` : '—'}</Info>
             <Info label="Risque">
               {fmtEur(t.riskEur)} · {String(t.riskPercent).replace('.', ',')} %
             </Info>

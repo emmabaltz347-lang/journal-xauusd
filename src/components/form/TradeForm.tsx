@@ -48,6 +48,7 @@ interface Draft {
   exitPrice: string;
   riskPercent: string;
   lots: string;
+  eurUsd: string;
   eurManual: boolean;
   pnlManual: string;
   rManual: boolean;
@@ -59,7 +60,7 @@ interface Draft {
   errorTags: string[];
 }
 
-function toDraft(t: Trade | undefined, defaultRisk: number): Draft {
+function toDraft(t: Trade | undefined, defaultRisk: number, defaultEurUsd: number): Draft {
   return {
     direction: t?.direction ?? 'buy',
     entryAt: t ? isoToLocalInput(t.entryAt) : nowLocalInput(),
@@ -70,6 +71,7 @@ function toDraft(t: Trade | undefined, defaultRisk: number): Draft {
     exitPrice: toInput(t?.exitPrice),
     riskPercent: toInput(t?.riskPercent ?? defaultRisk),
     lots: toInput(t?.lots),
+    eurUsd: toInput(t?.eurUsd ?? defaultEurUsd),
     eurManual: t?.pnlManual != null,
     pnlManual: toInput(t?.pnlManual),
     rManual: t?.rManual ?? false,
@@ -85,7 +87,7 @@ function toDraft(t: Trade | undefined, defaultRisk: number): Draft {
 export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade) => void }) {
   const { settings } = useSettings();
   const { trades, computed, saveTrade, syncing } = useTrades();
-  const [d, setD] = useState<Draft>(() => toDraft(trade, settings.defaultRiskPercent));
+  const [d, setD] = useState<Draft>(() => toDraft(trade, settings.defaultRiskPercent, settings.eurUsd));
   const [images, setImages] = useState<{ before?: ImageChange; after?: ImageChange }>({});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -109,14 +111,15 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
     const prev = computed.filter((t) => t.id !== trade?.id && new Date(t.entryAt).getTime() < at);
     return prev.length ? prev[prev.length - 1].capitalAfter : settings.startingCapital;
   }, [computed, d.entryAt, trade?.id, settings.startingCapital]);
-  const calc = { pipsPerDollar: settings.pipsPerDollar, contractSize: settings.contractSize, eurUsd: settings.eurUsd };
+  const fx = parseDecimal(d.eurUsd);
+  const calc = { pipsPerDollar: settings.pipsPerDollar, contractSize: settings.contractSize, eurUsd: fx && fx > 0 ? fx : settings.eurUsd };
   const lots = parseDecimal(d.lots);
   const hasLots = lots != null && lots > 0;
-  // Avec des lots : risque réel en € (perte au SL) et % du capital déduit
-  const riskEur = hasLots && entry != null && sl != null
-    ? riskEurFromLots(entry, sl, lots, calc)
-    : risk != null ? round((capitalBefore * risk) / 100, 2) : null;
-  const effectiveRisk = hasLots && riskEur != null && capitalBefore > 0 ? round((riskEur / capitalBefore) * 100, 2) : risk;
+  // Le % de risque est celui que vous saisissez ; les lots donnent seulement le risque réel, à titre indicatif
+  const plannedRiskEur = risk != null ? round((capitalBefore * risk) / 100, 2) : null;
+  const realRiskEur = hasLots && entry != null && sl != null ? riskEurFromLots(entry, sl, lots, calc) : null;
+  const realRiskPct = realRiskEur != null && capitalBefore > 0 ? round((realRiskEur / capitalBefore) * 100, 2) : null;
+  const effectiveRisk = risk;
   const autoEur =
     hasLots && entry != null && exit != null
       ? lotsToEur((exit - entry) * (d.direction === 'buy' ? 1 : -1), lots, calc)
@@ -143,7 +146,8 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
     if (!slOk) return setError(`Le stop loss doit être ${d.direction === 'buy' ? 'sous' : 'au-dessus du'} le prix d’entrée.`);
     if (!tpOk) return setError(`Le take profit doit être ${d.direction === 'buy' ? 'au-dessus du' : 'sous le'} prix d’entrée.`);
     if (d.lots.trim() && !hasLots) return setError('Le nombre de lots doit être un nombre positif (ex. 0,10).');
-    if (effectiveRisk == null || effectiveRisk <= 0) return setError('Indiquez les lots ou un % de risque positif.');
+    if (effectiveRisk == null || effectiveRisk <= 0) return setError('Le % de risque doit être positif.');
+    if (hasLots && !(fx && fx > 0)) return setError('Indiquez le taux EUR/USD (ex. 1,11).');
     if (d.eurManual && parseDecimal(d.pnlManual) == null) return setError('Saisissez le résultat en € ou décochez « € exact du broker ».');
     if (d.rManual && parseDecimal(d.rMultiple) == null) return setError('Saisissez le R manuel ou repassez en calcul automatique.');
 
@@ -161,6 +165,7 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
       outcome,
       riskPercent: effectiveRisk,
       lots: hasLots ? lots : null,
+      eurUsd: hasLots && fx && fx > 0 ? fx : null,
       pnlManual: d.eurManual ? parseDecimal(d.pnlManual) : null,
       rMultiple: r,
       rManual: d.rManual,
@@ -258,7 +263,10 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
         <GlassCard title="Taille & résultat" delay={0.05}>
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Lots" hint={hasLots && riskEur != null ? `Risque ${fmtEur(riskEur)}` : 'ex. 0,10'}>
+              <Field label="Risque (%)" hint={plannedRiskEur != null ? `≈ ${fmtEur(plannedRiskEur)}` : undefined}>
+                <input className="field num" inputMode="decimal" value={d.riskPercent} onChange={(e) => set('riskPercent', e.target.value)} />
+              </Field>
+              <Field label="Lots" hint="ex. 0,20">
                 <input
                   className="field num"
                   inputMode="decimal"
@@ -268,21 +276,22 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
                   onChange={(e) => set('lots', e.target.value)}
                 />
               </Field>
-              <Field
-                label="Risque (%)"
-                hint={hasLots ? 'calculé avec les lots' : riskEur != null ? `≈ ${fmtEur(riskEur)}` : undefined}
-              >
-                {hasLots ? (
-                  <div className="field num !bg-transparent text-white/70">
-                    {effectiveRisk == null ? '—' : `${toInput(effectiveRisk)} %`}
-                  </div>
-                ) : (
-                  <input className="field num" inputMode="decimal" value={d.riskPercent} onChange={(e) => set('riskPercent', e.target.value)} />
-                )}
+              <Field label="EUR/USD" hint="taux MT4">
+                <input className="field num" inputMode="decimal" value={d.eurUsd} onChange={(e) => set('eurUsd', e.target.value)} />
               </Field>
-              <Field label="R:R prévu">
-                <div className="field num !bg-transparent text-white/70">{rr == null ? '—' : fmtR(rr)}</div>
-              </Field>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/50">
+              <span>
+                R:R prévu : <span className="num text-white/80">{rr == null ? '—' : fmtR(rr)}</span>
+              </span>
+              {realRiskEur != null && (
+                <span>
+                  Risque réel avec ces lots :{' '}
+                  <span className={`num ${realRiskPct != null && risk != null && realRiskPct > risk * 1.1 ? 'text-loss' : 'text-white/80'}`}>
+                    {fmtEur(realRiskEur)} ({toInput(realRiskPct)} %)
+                  </span>
+                </span>
+              )}
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
               <div className="label">Résultat</div>
@@ -342,7 +351,7 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
                 {d.eurManual
                   ? 'Montant saisi à la main (commissions et swap inclus).'
                   : hasLots
-                    ? `€ = mouvement en $ × ${toInput(lots)} lot × ${settings.contractSize} oz ÷ ${toInput(settings.eurUsd)} (EUR/USD)`
+                    ? `€ = mouvement en $ × ${toInput(lots)} lot × ${settings.contractSize} oz ÷ ${toInput(calc.eurUsd)} (EUR/USD). Pour le montant exact au centime, cochez « € exact du broker ».`
                     : '€ = capital au moment du trade × % de risque × R (renseignez les lots pour un calcul exact)'}
               </p>
             </div>

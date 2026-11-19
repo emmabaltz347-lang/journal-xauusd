@@ -32,12 +32,22 @@ describe('lots', () => {
     expect(c.r).toBe(-1);
     expect(c.pnlEur).toBe(-100);
     expect(c.pnlSource).toBe('lots');
-    expect(c.riskEur).toBe(100);
+    expect(c.riskEur).toBe(100); // 1 % de 10 000 €
     expect(c.slPips).toBe(100);
   });
   it('vente au TP avec lots', () => {
     const t = mkTrade({ direction: 'sell', entryPrice: 3903.56, stopLoss: 3913.56, takeProfit: 3883.56, exitPrice: 3883.56, lots: 0.2 });
     expect(computeTrades([t], 10000, { ...opts, eurUsd: 1 })[0].pnlEur).toBe(400);
+  });
+  it('exemple MT4 : vente 0,20 lot, SL de 10,02 $ au taux 1,1106 → -180,44 €', () => {
+    const t = mkTrade({ direction: 'sell', entryPrice: 3903.56, stopLoss: 3913.58, takeProfit: 3883.56, exitPrice: 3913.58, lots: 0.2, eurUsd: 1.1106 });
+    const [c] = computeTrades([t], 10000, opts);
+    expect(c.pnlEur).toBe(-180.44);
+    expect(c.riskPercent).toBe(1); // le % saisi n'est pas modifié par les lots
+  });
+  it('le taux du trade prime sur le taux des réglages', () => {
+    const t = mkTrade({ entryPrice: 2650, stopLoss: 2640, exitPrice: 2660, lots: 0.1, eurUsd: 1.25 });
+    expect(computeTrades([t], 10000, opts)[0].pnlEur).toBe(80);
   });
   it('€ manuel prioritaire', () => {
     const t = mkTrade({ lots: 0.1, pnlManual: 512.34 });

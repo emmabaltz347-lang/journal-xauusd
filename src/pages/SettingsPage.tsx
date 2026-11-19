@@ -43,6 +43,23 @@ export default function SettingsPage() {
   const [contractSize, setContractSize] = useState(toInput(settings.contractSize));
   const [eurUsd, setEurUsd] = useState(toInput(settings.eurUsd));
   const [pending, setPending] = useState<Trade[]>([]);
+  const [fetchingRate, setFetchingRate] = useState(false);
+
+  /** Taux de référence BCE du jour (api.frankfurter.app, gratuit, sans clé) */
+  const fetchRate = async () => {
+    setFetchingRate(true);
+    try {
+      const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD');
+      const rate = (await res.json())?.rates?.USD;
+      if (typeof rate !== 'number') throw new Error();
+      setEurUsd(toInput(rate));
+      toast(`Taux BCE du jour : ${toInput(rate)}. Cliquez sur Enregistrer pour l'utiliser.`, 'info');
+    } catch {
+      toast('Impossible de récupérer le taux du jour. Saisissez-le à la main.', 'error');
+    } finally {
+      setFetchingRate(false);
+    }
+  };
 
   // Trades saisis dans ce navigateur avant la connexion à GitHub
   useEffect(() => {
@@ -134,8 +151,13 @@ export default function SettingsPage() {
           <Row label="Onces par lot" hint="100 chez la plupart des brokers (1 lot = 100 oz)">
             <input className="field num" inputMode="decimal" value={contractSize} onChange={(e) => setContractSize(e.target.value)} />
           </Row>
-          <Row label="Taux EUR/USD" hint="1 € = x $. Sert à convertir les gains en € quand vous indiquez des lots.">
-            <input className="field num" inputMode="decimal" value={eurUsd} onChange={(e) => setEurUsd(e.target.value)} />
+          <Row label="Taux EUR/USD par défaut" hint="1 € = x $. Pré-rempli dans chaque nouveau trade, modifiable trade par trade.">
+            <div className="flex gap-2">
+              <input className="field num" inputMode="decimal" value={eurUsd} onChange={(e) => setEurUsd(e.target.value)} />
+              <button type="button" className="btn-ghost shrink-0 !px-3" onClick={fetchRate} disabled={fetchingRate}>
+                {fetchingRate ? '…' : 'Taux du jour'}
+              </button>
+            </div>
           </Row>
         </div>
         <button className="btn-gold mt-4" onClick={saveTrading}>
