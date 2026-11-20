@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { fetchEurUsd, type FxQuote } from '../../lib/fx';
+import { fetchEurUsdAt, type FxQuote } from '../../lib/fx';
 import { Icon } from '../ui/Icon';
 import { DEFAULT_ERROR_TAGS, type Direction, type Emotion, type Trade } from '../../types/trade';
 import {
@@ -95,34 +95,45 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
 
-  // Taux EUR/USD en direct : récupéré à l'ouverture d'un nouveau trade, ou à la demande (↻)
+  // Taux EUR/USD à la date et à l'heure d'entrée du trade.
+  // Recalculé quand l'entrée change (sauf si le taux a été saisi à la main) ou à la demande (↻).
   const [fx, setFx] = useState<FxQuote | 'loading' | 'error' | null>(null);
   const fxTouched = useRef(false);
-  const loadFx = useCallback(async (force: boolean) => {
+  const fxRequest = useRef(0);
+  const loadFx = useCallback(async (entryLocal: string, force: boolean) => {
+    if (!entryLocal) return;
+    const id = ++fxRequest.current;
     setFx('loading');
     try {
-      const q = await fetchEurUsd();
+      const q = await fetchEurUsdAt(new Date(localInputToIso(entryLocal)));
+      if (id !== fxRequest.current) return; // une saisie plus récente a pris le relais
       setFx(q);
       if (force || !fxTouched.current) setD((x) => ({ ...x, eurUsd: toInput(q.rate) }));
     } catch {
-      setFx('error');
+      if (id === fxRequest.current) setFx('error');
     }
   }, []);
+  const initialEntry = useRef(d.entryAt);
   useEffect(() => {
-    if (!trade) void loadFx(false);
-  }, [trade, loadFx]);
+    // trade existant : on garde son taux tant que l'heure d'entrée n'est pas modifiée
+    if (trade && d.entryAt === initialEntry.current) return;
+    const timer = setTimeout(() => void loadFx(d.entryAt, false), 600);
+    return () => clearTimeout(timer);
+  }, [d.entryAt, trade, loadFx]);
+  const fmtFxTime = (at: Date) =>
+    at.toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   const fxHint =
     fx === 'loading'
-      ? 'taux en cours…'
+      ? 'recherche du taux…'
       : fx === 'error'
-        ? 'hors ligne : taux des réglages'
-        : fx?.source === 'live'
-          ? `en direct · ${fx.at.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+        ? 'introuvable : taux des réglages'
+        : fx?.source === 'minute'
+          ? `cours du ${fmtFxTime(fx.at)}`
           : fx?.source === 'bce'
             ? `BCE du ${fx.at.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}`
             : trade
-              ? 'taux enregistré · ↻ pour actualiser'
-              : 'taux MT4';
+              ? 'taux enregistré · ↻ pour recalculer'
+              : 'taux à l’entrée';
 
   const entry = parseDecimal(d.entryPrice);
   const sl = parseDecimal(d.stopLoss);
@@ -320,11 +331,14 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
                   />
                   <button
                     type="button"
-                    onClick={() => void loadFx(true)}
+                    onClick={() => {
+                      fxTouched.current = false;
+                      void loadFx(d.entryAt, true);
+                    }}
                     disabled={fx === 'loading'}
                     className="absolute inset-y-0 right-1 my-auto flex h-8 w-8 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-gold"
                     aria-label="Actualiser le taux EUR/USD"
-                    title="Taux en direct"
+                    title="Taux à l’heure d’entrée"
                   >
                     <Icon name="refresh" size={15} className={fx === 'loading' ? 'animate-spin' : ''} />
                   </button>
