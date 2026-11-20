@@ -6,13 +6,14 @@ import { isCurrentPeriod, isFiltered, periodLabel, shiftAnchor, type PeriodKind 
 import { Icon } from '../ui/Icon';
 import { EMOTIONS, EMOTION_EMOJI } from '../../types/trade';
 
-const PERIODS: { value: PeriodKind; label: string }[] = [
-  { value: 'all', label: 'Tout' },
-  { value: 'week', label: 'Semaine' },
-  { value: 'month', label: 'Mois' },
-  { value: 'quarter', label: 'Trimestre' },
-  { value: 'year', label: 'Année' },
-  { value: 'custom', label: 'Personnalisée' },
+const PERIODS: { value: PeriodKind; label: string; short: string }[] = [
+  { value: 'all', label: 'Tout', short: 'Tout' },
+  { value: 'day', label: 'Jour', short: 'Jour' },
+  { value: 'week', label: 'Semaine', short: 'Sem.' },
+  { value: 'month', label: 'Mois', short: 'Mois' },
+  { value: 'quarter', label: 'Trimestre', short: 'Trim.' },
+  { value: 'year', label: 'Année', short: 'Année' },
+  { value: 'custom', label: 'Personnalisée', short: 'Perso.' },
 ];
 
 const sel = 'field min-w-0 !px-2.5 !py-2 !text-xs md:!w-auto md:!px-3.5 md:!pr-8 md:!text-sm';
@@ -26,16 +27,17 @@ export function FilterBar() {
 
   return (
     <div className="glass p-3" data-no-export>
-      <div className="scrollbar-none -mx-1 flex gap-1 overflow-x-auto px-1">
+      <div className="grid grid-cols-7 gap-0.5 md:flex md:gap-1">
         {PERIODS.map((p) => (
           <button
             key={p.value}
             onClick={() => set({ period: p.value, anchor: null })}
-            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+            className={`shrink-0 whitespace-nowrap rounded-lg px-0.5 py-1.5 text-[11px] font-medium transition md:px-3 md:text-xs ${
               f.period === p.value ? 'bg-gold text-onaccent' : 'text-white/60 hover:bg-white/[0.06] hover:text-white'
             }`}
           >
-            {p.label}
+            <span className="md:hidden">{p.short}</span>
+            <span className="hidden md:inline">{p.label}</span>
           </button>
         ))}
       </div>

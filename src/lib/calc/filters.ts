@@ -1,6 +1,6 @@
 import type { Direction, Emotion, Trade } from '../../types/trade';
 
-export type PeriodKind = 'all' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
+export type PeriodKind = 'all' | 'day' | 'week' | 'month' | 'quarter' | 'year' | 'custom';
 
 export interface Filters {
   period: PeriodKind;
@@ -34,6 +34,10 @@ export function periodRange(f: Filters, today = new Date()): [Date, Date] | null
   switch (f.period) {
     case 'all':
       return null;
+    case 'day': {
+      const start = new Date(y, m, now.getDate());
+      return [start, new Date(y, m, now.getDate() + 1)];
+    }
     case 'week': {
       const d = new Date(y, m, now.getDate());
       const dow = (d.getDay() + 6) % 7; // lundi = 0
@@ -87,6 +91,7 @@ export function shiftAnchor(f: Filters, step: number, today = new Date()): strin
   const range = periodRange(f, today);
   if (!range || f.period === 'custom' || f.period === 'all') return f.anchor;
   const d = new Date(range[0]);
+  if (f.period === 'day') d.setDate(d.getDate() + step);
   if (f.period === 'week') d.setDate(d.getDate() + 7 * step);
   if (f.period === 'month') d.setMonth(d.getMonth() + step);
   if (f.period === 'quarter') d.setMonth(d.getMonth() + 3 * step);
@@ -95,6 +100,7 @@ export function shiftAnchor(f: Filters, step: number, today = new Date()): strin
 }
 
 const MONTHS = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
+const DAY_LONG = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 const DAY_MONTH = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
 const FULL = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -105,6 +111,10 @@ export function periodLabel(f: Filters, today = new Date()): string {
   const [s, e] = range;
   const last = new Date(e.getTime() - 86400000);
   switch (f.period) {
+    case 'day': {
+      const d = DAY_LONG.format(s);
+      return d.charAt(0).toUpperCase() + d.slice(1);
+    }
     case 'week':
       return s.getMonth() === last.getMonth()
         ? `Semaine du ${s.getDate()} au ${FULL.format(last)}`

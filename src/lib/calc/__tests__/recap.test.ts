@@ -47,6 +47,13 @@ describe('navigation de période', () => {
     expect(anchor).toBe('2026-11-09');
     expect(periodRange({ ...f, anchor }, today)![0].getDate()).toBe(9);
   });
+  it('jour : période, navigation et libellé', () => {
+    const f = { ...DEFAULT_FILTERS, period: 'day' as const };
+    const [s, e] = periodRange(f, today)!;
+    expect([s.getDate(), e.getDate()]).toEqual([19, 20]);
+    expect(shiftAnchor(f, -1, today)).toBe('2026-11-18');
+    expect(periodLabel({ ...f, anchor: '2026-11-18' }, today)).toBe('Mercredi 18 novembre 2026');
+  });
   it('mois précédent et libellés', () => {
     const f = { ...DEFAULT_FILTERS, period: 'month' as const };
     expect(periodLabel({ ...f, anchor: shiftAnchor(f, -2, today) }, today)).toBe('Septembre 2026');
