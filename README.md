@@ -137,7 +137,7 @@ Les réglages d'apparence (thème, couleurs, polices) sont aussi à faire une fo
 
 ## Utilisation
 
-- **Ajouter un trade** : sur mobile, le bouton doré **+** ; sur desktop, le menu **Ajouter**. Les boutons **TP touché / SL touché** remplissent le prix de sortie en un geste. Renseignez les **lots** pour un résultat en € exact ; sinon, le résultat est estimé à partir du % de risque.
+- **Ajouter un trade** : sur mobile, le bouton doré **+** ; sur desktop, le menu **Ajouter**. Les boutons **TP touché / SL touché** remplissent le prix de sortie en un geste. Renseignez les **lots** pour un résultat en € exact ; sinon, le résultat est estimé à partir du % de risque. Le **taux EUR/USD** se remplit tout seul avec le cours en direct à l'ouverture du formulaire (bouton ↻ pour l'actualiser) ; il est enregistré avec le trade.
 - **Synchronisation entre appareils** : chaque appareil (iPhone, ordinateur) doit avoir le token saisi dans ses Réglages. L'app relit GitHub quand vous revenez dessus et toutes les minutes. Le badge vert « Synchronisé » force une actualisation quand on le touche.
 - **Captures** : prise de photo, galerie, glisser-déposer ou collage (⌘V). Les images sont compressées dans le navigateur (WebP, 1 600 px de large maximum, environ 50 à 150 Ko) avant le commit.
 - **Filtres globaux** (période, sens, émotion, erreur) : ils s'appliquent aux KPI, aux graphiques et au récap. Pour une semaine, un mois, un trimestre ou une année, les flèches ‹ › permettent de naviguer d'une période à l'autre.

@@ -1,4 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { fetchEurUsd, type FxQuote } from '../../lib/fx';
+import { Icon } from '../ui/Icon';
 import { DEFAULT_ERROR_TAGS, type Direction, type Emotion, type Trade } from '../../types/trade';
 import {
   computePnlEur,
@@ -93,6 +95,35 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
 
+  // Taux EUR/USD en direct : récupéré à l'ouverture d'un nouveau trade, ou à la demande (↻)
+  const [fx, setFx] = useState<FxQuote | 'loading' | 'error' | null>(null);
+  const fxTouched = useRef(false);
+  const loadFx = useCallback(async (force: boolean) => {
+    setFx('loading');
+    try {
+      const q = await fetchEurUsd();
+      setFx(q);
+      if (force || !fxTouched.current) setD((x) => ({ ...x, eurUsd: toInput(q.rate) }));
+    } catch {
+      setFx('error');
+    }
+  }, []);
+  useEffect(() => {
+    if (!trade) void loadFx(false);
+  }, [trade, loadFx]);
+  const fxHint =
+    fx === 'loading'
+      ? 'taux en cours…'
+      : fx === 'error'
+        ? 'hors ligne : taux des réglages'
+        : fx?.source === 'live'
+          ? `en direct · ${fx.at.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+          : fx?.source === 'bce'
+            ? `BCE du ${fx.at.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}`
+            : trade
+              ? 'taux enregistré · ↻ pour actualiser'
+              : 'taux MT4';
+
   const entry = parseDecimal(d.entryPrice);
   const sl = parseDecimal(d.stopLoss);
   const tp = parseDecimal(d.takeProfit);
@@ -111,8 +142,8 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
     const prev = computed.filter((t) => t.id !== trade?.id && new Date(t.entryAt).getTime() < at);
     return prev.length ? prev[prev.length - 1].capitalAfter : settings.startingCapital;
   }, [computed, d.entryAt, trade?.id, settings.startingCapital]);
-  const fx = parseDecimal(d.eurUsd);
-  const calc = { pipsPerDollar: settings.pipsPerDollar, contractSize: settings.contractSize, eurUsd: fx && fx > 0 ? fx : settings.eurUsd };
+  const rate = parseDecimal(d.eurUsd);
+  const calc = { pipsPerDollar: settings.pipsPerDollar, contractSize: settings.contractSize, eurUsd: rate && rate > 0 ? rate : settings.eurUsd };
   const lots = parseDecimal(d.lots);
   const hasLots = lots != null && lots > 0;
   // Le % de risque est celui que vous saisissez ; les lots donnent seulement le risque réel, à titre indicatif
@@ -147,7 +178,7 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
     if (!tpOk) return setError(`Le take profit doit être ${d.direction === 'buy' ? 'au-dessus du' : 'sous le'} prix d’entrée.`);
     if (d.lots.trim() && !hasLots) return setError('Le nombre de lots doit être un nombre positif (ex. 0,10).');
     if (effectiveRisk == null || effectiveRisk <= 0) return setError('Le % de risque doit être positif.');
-    if (hasLots && !(fx && fx > 0)) return setError('Indiquez le taux EUR/USD (ex. 1,11).');
+    if (hasLots && !(rate && rate > 0)) return setError('Indiquez le taux EUR/USD (ex. 1,11).');
     if (d.eurManual && parseDecimal(d.pnlManual) == null) return setError('Saisissez le résultat en € ou décochez « € exact du broker ».');
     if (d.rManual && parseDecimal(d.rMultiple) == null) return setError('Saisissez le R manuel ou repassez en calcul automatique.');
 
@@ -165,7 +196,7 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
       outcome,
       riskPercent: effectiveRisk,
       lots: hasLots ? lots : null,
-      eurUsd: hasLots && fx && fx > 0 ? fx : null,
+      eurUsd: hasLots && rate && rate > 0 ? rate : null,
       pnlManual: d.eurManual ? parseDecimal(d.pnlManual) : null,
       rMultiple: r,
       rManual: d.rManual,
@@ -276,8 +307,28 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
                   onChange={(e) => set('lots', e.target.value)}
                 />
               </Field>
-              <Field label="EUR/USD" hint="taux MT4">
-                <input className="field num" inputMode="decimal" value={d.eurUsd} onChange={(e) => set('eurUsd', e.target.value)} />
+              <Field label="EUR/USD" hint={fxHint}>
+                <div className="relative">
+                  <input
+                    className="field num !pr-10"
+                    inputMode="decimal"
+                    value={d.eurUsd}
+                    onChange={(e) => {
+                      fxTouched.current = true;
+                      set('eurUsd', e.target.value);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void loadFx(true)}
+                    disabled={fx === 'loading'}
+                    className="absolute inset-y-0 right-1 my-auto flex h-8 w-8 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-gold"
+                    aria-label="Actualiser le taux EUR/USD"
+                    title="Taux en direct"
+                  >
+                    <Icon name="refresh" size={15} className={fx === 'loading' ? 'animate-spin' : ''} />
+                  </button>
+                </div>
               </Field>
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-white/50">
