@@ -65,10 +65,11 @@ function group(
     }));
 }
 
-/** Résultat en R par jour de la semaine (heure de Paris), lundi → vendredi + week-end si présent */
+/** Résultat en R par jour de la semaine (heure de Paris), du lundi au vendredi */
 export function rByWeekday(trades: ComputedTrade[]): GroupedR[] {
+  // marché ouvert du lundi au vendredi : les week-ends ne sont pas affichés
   const res = group(trades, (t) => parisParts(t.entryAt).weekday, [0, 1, 2, 3, 4], (k) => WEEKDAY_LABELS[k]);
-  return res.filter((g) => g.key < 5 || g.count > 0);
+  return res.filter((g) => g.key < 5);
 }
 
 /** Résultat en R par heure d'entrée (heure de Paris), uniquement les heures tradées */

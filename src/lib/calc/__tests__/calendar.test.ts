@@ -16,26 +16,30 @@ const trades = computeTrades(
 
 describe('calendrier mensuel', () => {
   const m = buildMonth(trades, 2026, 11);
-  it('semaines du lundi au dimanche', () => {
-    // le 1er novembre 2026 est un dimanche → la 1re semaine commence le lundi 26 octobre
-    expect(m.weeks[0].days[0].date).toBe('2026-10-26');
-    expect(m.weeks[0].days[6]).toMatchObject({ date: '2026-11-01', inMonth: true });
-    expect(m.weeks).toHaveLength(6);
+  it('semaines du lundi au vendredi, sans semaine vide', () => {
+    // le 1er novembre 2026 est un dimanche : la semaine du 26 oct. n'a aucun jour ouvré en novembre → ignorée
+    expect(m.weeks[0].days[0].date).toBe('2026-11-02');
+    expect(m.weeks.every((w) => w.days.length === 5)).toBe(true);
+    // dernière semaine : lundi 30 novembre seul jour du mois
+    expect(m.weeks.at(-1)!.days.filter((d) => d.inMonth).map((d) => d.date)).toEqual(['2026-11-30']);
+    expect(m.weeks).toHaveLength(5);
   });
   it('regroupe par jour', () => {
-    const d2 = m.weeks[1].days[0];
+    const d2 = m.weeks[0].days[0];
     expect(d2).toMatchObject({ date: '2026-11-02', count: 2, wins: 1, r: 1, hasNotes: true });
     expect(d2.pnl).toBeCloseTo(trades[1].pnlEur + trades[2].pnlEur, 2);
   });
   it('ignore les jours hors du mois et les trades ouverts', () => {
-    expect(m.weeks[0].days[4]).toMatchObject({ date: '2026-10-30', inMonth: false, count: 0 });
+    const oct = buildMonth(trades, 2026, 10);
+    expect(oct.weeks.at(-1)!.days[4]).toMatchObject({ date: '2026-10-30', inMonth: true, count: 1 });
+    expect(m.weeks.flatMap((w) => w.days).find((d) => d.date === '2026-10-30')).toBeUndefined();
     expect(m.count).toBe(3);
     expect(m.tradingDays).toBe(2);
     expect(m.r).toBe(0);
   });
   it('totaux par semaine', () => {
-    expect(m.weeks[1]).toMatchObject({ r: 1, tradingDays: 1 });
-    expect(m.weeks[2]).toMatchObject({ r: -1, tradingDays: 1 });
+    expect(m.weeks[0]).toMatchObject({ r: 1, tradingDays: 1 });
+    expect(m.weeks[1]).toMatchObject({ r: -1, tradingDays: 1 });
   });
   it('jour en heure de Paris', () => expect(parisDayKey('2026-11-02T23:30:00Z')).toBe('2026-11-03'));
 });

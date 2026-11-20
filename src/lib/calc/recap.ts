@@ -33,14 +33,25 @@ export function periodOf(iso: string, kind: RecapKind): { key: string; start: st
     const q = Math.floor((p.month - 1) / 3) + 1;
     return { key: `${p.year}-Q${q}`, start: `${p.year}-${pad((q - 1) * 3 + 1)}-01`, label: `T${q} ${p.year}` };
   }
-  // semaine du lundi au dimanche
-  const monday = new Date(Date.UTC(p.year, p.month - 1, p.day - p.weekday));
-  const sunday = new Date(monday.getTime() + 6 * 86400000);
-  const start = monday.toISOString().slice(0, 10);
+  // semaine du mois : du lundi au dimanche, coupée aux limites du mois ; affichée du lundi au vendredi
+  const DAY = 86400000;
+  const monday = Date.UTC(p.year, p.month - 1, p.day - p.weekday);
+  const mFirst = Date.UTC(p.year, p.month - 1, 1);
+  const mLast = Date.UTC(p.year, p.month, 0);
+  const startMs = Math.max(monday, mFirst);
+  const endMs = Math.min(monday + 6 * DAY, mLast);
+  const wd = (ms: number) => new Date(ms).getUTCDay();
+  let a = startMs;
+  while ((wd(a) === 0 || wd(a) === 6) && a < endMs) a += DAY;
+  let b = endMs;
+  while ((wd(b) === 0 || wd(b) === 6) && b > a) b -= DAY;
+  const A = new Date(a);
+  const B = new Date(b);
+  const start = new Date(startMs).toISOString().slice(0, 10);
   const label =
-    monday.getUTCMonth() === sunday.getUTCMonth()
-      ? `${monday.getUTCDate()} – ${sunday.getUTCDate()} ${MONTHS[sunday.getUTCMonth()]} ${sunday.getUTCFullYear()}`
-      : `${monday.getUTCDate()} ${MONTHS[monday.getUTCMonth()]} – ${sunday.getUTCDate()} ${MONTHS[sunday.getUTCMonth()]} ${sunday.getUTCFullYear()}`;
+    a === b
+      ? `${A.getUTCDate()} ${MONTHS[A.getUTCMonth()]} ${A.getUTCFullYear()}`
+      : `${A.getUTCDate()} – ${B.getUTCDate()} ${MONTHS[B.getUTCMonth()]} ${B.getUTCFullYear()}`;
   return { key: start, start, label };
 }
 

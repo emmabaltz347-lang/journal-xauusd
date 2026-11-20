@@ -9,7 +9,7 @@ import { buildMonth, parisDayKey, type CalendarDay } from '../../lib/calc/calend
 import { parisParts } from '../../lib/calc/paris';
 import { fmtCompactR, fmtEur, fmtPct, fmtR } from '../../lib/format';
 
-const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven']; // marché fermé le week-end
 const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
 const eurCompact = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', notation: 'compact', maximumFractionDigits: 1 });
@@ -100,7 +100,7 @@ export function CalendarCard() {
       <div className="grid gap-2 lg:grid-cols-[1fr_9rem]">
         {/* Grille des jours */}
         <div>
-          <div className="mb-1.5 grid grid-cols-7 gap-1 md:gap-1.5">
+          <div className="mb-1.5 grid grid-cols-5 gap-1 md:gap-1.5">
             {WEEKDAYS.map((d) => (
               <div key={d} className="rounded-lg bg-white/[0.04] py-1 text-center text-[11px] font-medium text-white/50">
                 {d}
@@ -109,7 +109,7 @@ export function CalendarCard() {
           </div>
           <div className="grid gap-1 md:gap-1.5">
             {month.weeks.map((w, wi) => (
-              <div key={wi} className="grid grid-cols-7 gap-1 md:gap-1.5">
+              <div key={wi} className="grid grid-cols-5 gap-1 md:gap-1.5">
                 {w.days.map((d) => {
                   const traded = d.inMonth && d.count > 0;
                   const pos = traded && (unit === 'EUR' ? d.pnl : d.r) > 0;
@@ -120,7 +120,7 @@ export function CalendarCard() {
                       onClick={() => pickDay(d)}
                       disabled={!traded}
                       title={traded ? `${d.count} trade${d.count > 1 ? 's' : ''} · cliquer pour filtrer sur ce jour` : undefined}
-                      className={`relative flex aspect-square flex-col items-end justify-between rounded-lg border p-1 text-right transition md:aspect-[5/4] md:rounded-xl md:p-2 ${
+                      className={`relative flex aspect-square flex-col items-end justify-between rounded-lg border p-1 text-right transition md:aspect-[16/10] md:rounded-xl md:p-2 ${
                         !d.inMonth
                           ? 'border-transparent bg-transparent opacity-30'
                           : pos
@@ -160,7 +160,7 @@ export function CalendarCard() {
           {month.weeks.map((w, wi) => (
             <button
               key={wi}
-              onClick={() => w.tradingDays && pickWeek(w.days[0].date)}
+              onClick={() => w.tradingDays && pickWeek((w.days.find((d) => d.inMonth) ?? w.days[0]).date)}
               disabled={!w.tradingDays}
               className="flex flex-col justify-center rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-left transition enabled:hover:bg-white/[0.08] lg:aspect-auto lg:min-h-0 lg:flex-1"
               title={w.tradingDays ? 'Filtrer sur cette semaine' : undefined}

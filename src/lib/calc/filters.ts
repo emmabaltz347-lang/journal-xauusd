@@ -27,8 +27,40 @@ export const DEFAULT_FILTERS: Filters = {
 };
 
 /** Bornes [début, fin[ de la période courante, calculées en heure locale du navigateur */
+// --- jours de marché (lundi → vendredi) -------------------------------------------------
+const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+/** Jour ouvré le plus proche : on recule (dir = -1) ou on avance (dir = 1) jusqu'à un jour de semaine */
+export function toWeekday(d: Date, dir: 1 | -1 = -1): Date {
+  let x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  while (isWeekend(x)) x = addDays(x, dir);
+  return x;
+}
+
+/**
+ * Semaine « du mois » contenant `d` : du lundi au dimanche, coupée aux limites du mois.
+ * Ex. la semaine du 30 nov. au 6 déc. donne [30 nov., 1er déc.[ côté novembre et [1er déc., 7 déc.[ côté décembre.
+ */
+export function monthWeek(d: Date): [Date, Date] {
+  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const monday = addDays(day, -((day.getDay() + 6) % 7));
+  const mStart = new Date(day.getFullYear(), day.getMonth(), 1);
+  const mEnd = new Date(day.getFullYear(), day.getMonth() + 1, 1);
+  const start = monday < mStart ? mStart : monday;
+  const sunEnd = addDays(monday, 7);
+  return [start, sunEnd > mEnd ? mEnd : sunEnd];
+}
+
+/** Premier et dernier jour ouvré d'un intervalle [début, fin[ (null s'il n'y en a aucun) */
+export function tradingBounds([s, e]: [Date, Date]): [Date, Date] | null {
+  const first = toWeekday(s, 1);
+  const last = toWeekday(addDays(e, -1), -1);
+  return first <= last && first < e && last >= s ? [first, last] : null;
+}
+
 export function periodRange(f: Filters, today = new Date()): [Date, Date] | null {
-  const now = f.anchor ? new Date(`${f.anchor}T12:00:00`) : today;
+  // sans date choisie, un week-end est ramené au vendredi précédent (marché fermé)
+  const now = f.anchor ? new Date(`${f.anchor}T12:00:00`) : f.period === 'day' ? toWeekday(today, -1) : today;
   const y = now.getFullYear();
   const m = now.getMonth();
   switch (f.period) {
@@ -38,12 +70,8 @@ export function periodRange(f: Filters, today = new Date()): [Date, Date] | null
       const start = new Date(y, m, now.getDate());
       return [start, new Date(y, m, now.getDate() + 1)];
     }
-    case 'week': {
-      const d = new Date(y, m, now.getDate());
-      const dow = (d.getDay() + 6) % 7; // lundi = 0
-      const start = new Date(y, m, d.getDate() - dow);
-      return [start, new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7)];
-    }
+    case 'week':
+      return monthWeek(now);
     case 'month':
       return [new Date(y, m, 1), new Date(y, m + 1, 1)];
     case 'quarter': {
@@ -90,9 +118,21 @@ const toYmd = (d: Date) =>
 export function shiftAnchor(f: Filters, step: number, today = new Date()): string | null {
   const range = periodRange(f, today);
   if (!range || f.period === 'custom' || f.period === 'all') return f.anchor;
+  if (f.period === 'day') {
+    // jour ouvré précédent / suivant
+    return toYmd(toWeekday(addDays(range[0], step), step > 0 ? 1 : -1));
+  }
+  if (f.period === 'week') {
+    // semaine du mois précédente / suivante, en sautant celles sans jour ouvré
+    let r = range;
+    for (let i = 0; i < Math.abs(step); i++) {
+      do {
+        r = monthWeek(step > 0 ? r[1] : addDays(r[0], -1));
+      } while (!tradingBounds(r));
+    }
+    return toYmd(r[0]);
+  }
   const d = new Date(range[0]);
-  if (f.period === 'day') d.setDate(d.getDate() + step);
-  if (f.period === 'week') d.setDate(d.getDate() + 7 * step);
   if (f.period === 'month') d.setMonth(d.getMonth() + step);
   if (f.period === 'quarter') d.setMonth(d.getMonth() + 3 * step);
   if (f.period === 'year') d.setFullYear(d.getFullYear() + step);
@@ -115,10 +155,16 @@ export function periodLabel(f: Filters, today = new Date()): string {
       const d = DAY_LONG.format(s);
       return d.charAt(0).toUpperCase() + d.slice(1);
     }
-    case 'week':
-      return s.getMonth() === last.getMonth()
-        ? `Semaine du ${s.getDate()} au ${FULL.format(last)}`
-        : `Semaine du ${DAY_MONTH.format(s)} au ${FULL.format(last)}`;
+    case 'week': {
+      // affichage du lundi au vendredi (jours de marché)
+      const tb = tradingBounds([s, e]);
+      if (!tb) return `Semaine du ${FULL.format(s)}`;
+      const [a, b] = tb;
+      if (a.getTime() === b.getTime()) return `Semaine du ${FULL.format(a)}`;
+      return a.getMonth() === b.getMonth()
+        ? `Semaine du ${a.getDate()} au ${FULL.format(b)}`
+        : `Semaine du ${DAY_MONTH.format(a)} au ${FULL.format(b)}`;
+    }
     case 'month': {
       const m = MONTHS.format(s);
       return m.charAt(0).toUpperCase() + m.slice(1);

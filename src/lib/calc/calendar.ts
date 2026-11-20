@@ -15,7 +15,7 @@ export interface CalendarDay {
 }
 
 export interface CalendarWeek {
-  days: CalendarDay[]; // 7 jours, du lundi au dimanche
+  days: CalendarDay[]; // 5 jours, du lundi au vendredi (marché fermé le week-end)
   pnl: number;
   r: number;
   /** jours tradés de la semaine (dans le mois affiché) */
@@ -81,9 +81,12 @@ export function buildMonth(trades: ComputedTrade[], year: number, month: number)
         hasNotes: g?.notes ?? false,
       });
     }
-    const traded = days.filter((d) => d.count > 0);
+    const weekdays = days.slice(0, 5);
+    // une semaine sans aucun jour ouvré dans le mois n'est pas affichée
+    if (!weekdays.some((d) => d.inMonth)) continue;
+    const traded = weekdays.filter((d) => d.count > 0);
     weeks.push({
-      days,
+      days: weekdays,
       pnl: round(traded.reduce((a, d) => a + d.pnl, 0), 2),
       r: round(traded.reduce((a, d) => a + d.r, 0), 2),
       tradingDays: traded.length,

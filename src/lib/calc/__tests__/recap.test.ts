@@ -15,10 +15,14 @@ const trades = computeTrades(
 );
 
 describe('periodOf', () => {
-  it('semaine du lundi au dimanche', () => {
+  it('semaine du mois, affichée du lundi au vendredi', () => {
     expect(periodOf('2026-11-22T23:30:00+01:00', 'week').start).toBe('2026-11-16');
-    expect(periodOf('2026-11-16T00:10:00+01:00', 'week').label).toBe('16 – 22 nov. 2026');
-    expect(periodOf('2026-12-01T10:00:00+01:00', 'week').label).toBe('30 nov. – 6 déc. 2026');
+    expect(periodOf('2026-11-16T00:10:00+01:00', 'week').label).toBe('16 – 20 nov. 2026');
+    // la semaine du 30 nov. au 6 déc. est coupée en deux
+    expect(periodOf('2026-11-30T10:00:00+01:00', 'week')).toMatchObject({ start: '2026-11-30', label: '30 nov. 2026' });
+    expect(periodOf('2026-12-01T10:00:00+01:00', 'week')).toMatchObject({ start: '2026-12-01', label: '1 – 4 déc. 2026' });
+    // le 1er novembre 2026 est un dimanche : semaine sans jour ouvré
+    expect(periodOf('2026-10-30T10:00:00+01:00', 'week').label).toBe('26 – 30 oct. 2026');
   });
   it('mois et trimestre', () => {
     expect(periodOf('2026-11-16T09:00:00+01:00', 'month')).toMatchObject({ label: 'Novembre 2026', start: '2026-11-01' });
@@ -41,11 +45,27 @@ describe('recapByPeriod', () => {
 
 describe('navigation de période', () => {
   const today = new Date(2026, 10, 19, 12);
-  it('semaine précédente', () => {
+  it('semaine précédente / suivante, coupées au mois', () => {
     const f = { ...DEFAULT_FILTERS, period: 'week' as const };
-    const anchor = shiftAnchor(f, -1, today);
-    expect(anchor).toBe('2026-11-09');
-    expect(periodRange({ ...f, anchor }, today)![0].getDate()).toBe(9);
+    const prev = shiftAnchor(f, -1, today);
+    expect(periodRange({ ...f, anchor: prev }, today)![0].getDate()).toBe(9);
+    // fin novembre : 23–27 → 30 nov. (1 jour) → 1–4 déc.
+    const w4 = { ...f, anchor: '2026-11-25' };
+    const w5 = { ...f, anchor: shiftAnchor(w4, 1, today) };
+    expect(periodLabel(w5, today)).toBe('Semaine du 30 nov. 2026');
+    const w6 = { ...f, anchor: shiftAnchor(w5, 1, today) };
+    expect(periodLabel(w6, today)).toBe('Semaine du 1 au 4 déc. 2026');
+    expect(periodLabel({ ...f, anchor: shiftAnchor(w6, -1, today) }, today)).toBe('Semaine du 30 nov. 2026');
+    // début novembre : la semaine du 1er (dimanche seul) est sautée
+    const firstNov = { ...f, anchor: shiftAnchor({ ...f, anchor: '2026-11-04' }, -1, today) };
+    expect(periodLabel(firstNov, today)).toBe('Semaine du 26 au 30 oct. 2026');
+  });
+  it('jour : le week-end est sauté', () => {
+    const f = { ...DEFAULT_FILTERS, period: 'day' as const };
+    expect(shiftAnchor({ ...f, anchor: '2026-11-23' }, -1, today)).toBe('2026-11-20');
+    expect(shiftAnchor({ ...f, anchor: '2026-11-20' }, 1, today)).toBe('2026-11-23');
+    const saturday = new Date(2026, 10, 21, 12);
+    expect(periodLabel(f, saturday)).toBe('Vendredi 20 novembre 2026');
   });
   it('jour : période, navigation et libellé', () => {
     const f = { ...DEFAULT_FILTERS, period: 'day' as const };
@@ -58,6 +78,6 @@ describe('navigation de période', () => {
     const f = { ...DEFAULT_FILTERS, period: 'month' as const };
     expect(periodLabel({ ...f, anchor: shiftAnchor(f, -2, today) }, today)).toBe('Septembre 2026');
     expect(periodLabel({ ...DEFAULT_FILTERS, period: 'quarter' }, today)).toBe('T4 2026');
-    expect(periodLabel({ ...DEFAULT_FILTERS, period: 'week' }, today)).toBe('Semaine du 16 au 22 nov. 2026');
+    expect(periodLabel({ ...DEFAULT_FILTERS, period: 'week' }, today)).toBe('Semaine du 16 au 20 nov. 2026');
   });
 });
