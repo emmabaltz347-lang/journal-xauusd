@@ -152,7 +152,7 @@ Les réglages d'apparence (thème, couleurs, polices) sont aussi à faire une fo
   - le bouton **Télécharger le PDF** du Récap produit un vrai document A4 : synthèse, récap par période et détail de chaque trade, en respectant les filtres actifs ;
   - le Dashboard s'exporte en **PDF** ou **JPG** tel qu'il est affiché ;
   - **Réglages → Exporter / Importer JSON** sert de sauvegarde.
-- **Apparence** (Réglages) : 6 thèmes prêts à l'emploi, couleurs libres (accent, gains, pertes, fond, halo), police du texte, police des chiffres et taille du texte. Ces réglages sont propres à chaque appareil.
+- **Apparence** (Réglages) : bibliothèque de thèmes modifiable sans limite (retoucher un thème et l'enregistrer, en créer de nouveaux, renommer, supprimer, restaurer les thèmes d'origine), couleurs libres, polices, taille du texte et **transparence des cartes** (de très transparent à opaque). Commune à tous vos appareils.
 
 Chaque ajout, modification ou suppression crée un commit (`➕ Ajout du trade …`) dans le repo privé. L'historique Git sert donc aussi de sauvegarde. Si deux appareils enregistrent en même temps, l'application relit le fichier et réessaie automatiquement.
 

@@ -1,5 +1,5 @@
 import type { Settings, Trade } from '../types/trade';
-import { DEFAULT_THEME } from './theme';
+import { DEFAULT_THEME, defaultThemeLibrary } from './theme';
 import { defaultAccounts } from './calc/accounts';
 
 const KEY_SETTINGS = 'jx.settings.v1';
@@ -19,6 +19,7 @@ export const DEFAULT_SETTINGS: Settings = {
   contractSize: 100,
   eurUsd: 1.15,
   accounts: defaultAccounts(),
+  themeLibrary: defaultThemeLibrary(),
 };
 
 function read<T>(key: string): T | null {
@@ -43,6 +44,9 @@ export const loadSettings = (): Settings => {
   const saved = read<Partial<Settings>>(KEY_SETTINGS) ?? {};
   const merged = { ...DEFAULT_SETTINGS, ...saved, theme: { ...DEFAULT_THEME, ...(saved.theme ?? {}) } };
   // anciennes versions : un seul capital → compte principal
+  if (!saved.themeLibrary?.length) merged.themeLibrary = defaultThemeLibrary();
+  // anciennes sauvegardes sans transparence
+  merged.themeLibrary = merged.themeLibrary.map((x) => ({ ...x, style: { ...x.style, glass: x.style.glass ?? merged.theme.glass ?? 25 } }));
   if (!saved.accounts?.length) merged.accounts = defaultAccounts(merged.startingCapital, merged.defaultRiskPercent);
   return merged;
 };

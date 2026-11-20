@@ -1,5 +1,5 @@
 import { TradesFileSchema, type Account, type Trade, type TradesFile } from '../../types/trade';
-import { DEFAULT_THEME, FONTS_NUM, FONTS_TEXT, type Theme } from '../theme';
+import { DEFAULT_THEME, FONTS_NUM, FONTS_TEXT, styleOf, type SavedTheme, type Theme } from '../theme';
 import {
   GitHubError,
   bytesToBase64,
@@ -95,6 +95,7 @@ export interface SharedSettings {
   knownErrorTags: string[];
   accounts: Account[];
   theme: Theme;
+  themeLibrary: SavedTheme[];
 }
 
 export const SHARED_KEYS: (keyof SharedSettings)[] = [
@@ -106,6 +107,7 @@ export const SHARED_KEYS: (keyof SharedSettings)[] = [
   'knownErrorTags',
   'accounts',
   'theme',
+  'themeLibrary',
 ];
 
 export function pickShared(s: SharedSettings): SharedSettings {
@@ -133,6 +135,7 @@ function sanitizeTheme(t: Partial<Theme>): Theme {
   if (t.fontText && t.fontText in FONTS_TEXT) out.fontText = t.fontText;
   if (t.fontNum && t.fontNum in FONTS_NUM) out.fontNum = t.fontNum;
   if (t.scale === 'sm' || t.scale === 'md' || t.scale === 'lg') out.scale = t.scale;
+  if (typeof t.glass === 'number' && Number.isFinite(t.glass)) out.glass = Math.max(0, Math.min(100, Math.round(t.glass)));
   return out;
 }
 
@@ -151,6 +154,13 @@ export async function loadSharedSettings(cfg: RepoConfig): Promise<Partial<Share
       if (list.length) out.accounts = list;
     } else if (k === 'theme') {
       if (v && typeof v === 'object') out.theme = sanitizeTheme(v as Partial<Theme>);
+    } else if (k === 'themeLibrary') {
+      const list = Array.isArray(v)
+        ? v
+            .filter((x): x is SavedTheme => !!x && typeof x.id === 'string' && typeof x.name === 'string' && !!x.style)
+            .map((x) => ({ id: x.id, name: x.name.slice(0, 40), style: styleOf(sanitizeTheme(x.style as Partial<Theme>)) }))
+        : [];
+      if (list.length) out.themeLibrary = list;
     } else if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
       (out as Record<string, number>)[k] = v;
     }

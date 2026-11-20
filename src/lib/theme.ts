@@ -15,6 +15,8 @@ export interface Theme {
   fontText: FontText;
   fontNum: FontNum;
   scale: TextScale;
+  /** Opacité des cartes : 0 = très transparentes, 25 = verre d'origine, 100 = opaques */
+  glass: number;
 }
 
 export const FONTS_TEXT: Record<FontText, { label: string; family: string }> = {
@@ -35,7 +37,9 @@ export const FONTS_NUM: Record<FontNum, { label: string; family: string | null }
   robotomono: { label: 'Roboto Mono', family: "'Roboto Mono'" },
 };
 
-type PresetColors = Omit<Theme, 'preset' | 'fontText' | 'fontNum' | 'scale'>;
+type PresetColors = Omit<Theme, 'preset' | 'fontText' | 'fontNum' | 'scale' | 'glass'>;
+
+export const DEFAULT_GLASS = 25;
 
 export const PRESETS: Record<string, { label: string; colors: PresetColors; fontText: FontText; fontNum: FontNum }> = {
   graphite: {
@@ -78,7 +82,7 @@ export const PRESETS: Record<string, { label: string; colors: PresetColors; font
 
 export function themeFromPreset(id: string, scale: TextScale = 'md'): Theme {
   const p = PRESETS[id] ?? PRESETS.graphite;
-  return { preset: id, ...p.colors, fontText: p.fontText, fontNum: p.fontNum, scale };
+  return { preset: id, ...p.colors, fontText: p.fontText, fontNum: p.fontNum, scale, glass: DEFAULT_GLASS };
 }
 
 export const DEFAULT_THEME: Theme = themeFromPreset('graphite');
@@ -118,6 +122,13 @@ export function applyTheme(t: Theme) {
   const num = FONTS_NUM[t.fontNum].family;
   set('--font-num', num ? `${num}, ui-monospace, monospace` : 'var(--font-text)');
   root.style.fontSize = SCALE[t.scale];
+  // transparence des cartes
+  const g = Math.max(0, Math.min(100, Number.isFinite(t.glass) ? t.glass : DEFAULT_GLASS));
+  const white = g < DEFAULT_GLASS ? 0.02 + (g / DEFAULT_GLASS) * 0.05 : 0.07;
+  const solid = g <= DEFAULT_GLASS ? 0 : ((g - DEFAULT_GLASS) / (100 - DEFAULT_GLASS)) * 0.97;
+  set('--glass-white', white.toFixed(3));
+  set('--glass-solid', solid.toFixed(3));
+  set('--glass-blur', `${Math.round(8 + Math.min(g, DEFAULT_GLASS) * 0.4)}px`);
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t.bgFrom);
 }
 
@@ -129,4 +140,39 @@ export function luminance(hex: string): number {
       return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
     });
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+// --- Bibliothèque de thèmes (modifiable, sans limite) ------------------------------------
+
+/** Thème enregistré : couleurs et polices (la taille du texte reste un réglage à part) */
+export type ThemeStyle = Omit<Theme, 'preset' | 'scale'>;
+export interface SavedTheme {
+  id: string;
+  name: string;
+  style: ThemeStyle;
+}
+
+export const STYLE_KEYS: (keyof ThemeStyle)[] = ['accent', 'gain', 'loss', 'bgFrom', 'bgTo', 'glow', 'fontText', 'fontNum', 'glass'];
+
+export function styleOf(t: Theme | ThemeStyle): ThemeStyle {
+  return Object.fromEntries(STYLE_KEYS.map((k) => [k, t[k]])) as unknown as ThemeStyle;
+}
+
+export const sameStyle = (a: ThemeStyle, b: ThemeStyle) => STYLE_KEYS.every((k) => String(a[k]).toLowerCase() === String(b[k]).toLowerCase());
+
+/** Les thèmes d'origine, comme point de départ de la bibliothèque */
+export function defaultThemeLibrary(): SavedTheme[] {
+  return Object.entries(PRESETS).map(([id, p]) => ({
+    id,
+    name: p.label,
+    style: { ...p.colors, fontText: p.fontText, fontNum: p.fontNum, glass: DEFAULT_GLASS },
+  }));
+}
+
+export function themeFromSaved(saved: SavedTheme, scale: TextScale = 'md'): Theme {
+  return { ...saved.style, preset: saved.id, scale };
+}
+
+export function newThemeId() {
+  return `th_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 }

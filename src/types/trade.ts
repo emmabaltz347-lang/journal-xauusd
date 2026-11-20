@@ -78,7 +78,7 @@ export const TradesFileSchema = z.object({
 }).passthrough();
 export type TradesFile = z.infer<typeof TradesFileSchema>;
 
-import type { Theme } from '../lib/theme';
+import type { SavedTheme, Theme } from '../lib/theme';
 
 export interface Account {
   id: string;
@@ -98,6 +98,8 @@ export interface Settings {
   theme: Theme;
   /** Comptes de trading (le premier est le compte principal) */
   accounts: Account[];
+  /** Bibliothèque de thèmes (modifiable) */
+  themeLibrary: SavedTheme[];
   /** Nombre de pips pour 1 $ de mouvement sur l'or (10 : 3903,56 → 3913,56 = 100 pips) */
   pipsPerDollar: number;
   /** Onces par lot standard (100 chez la plupart des brokers) */

@@ -1,14 +1,19 @@
 import { GlassCard } from '../ui/GlassCard';
 import { Segmented } from '../ui/Segmented';
 import { useSettings } from '../../hooks/useSettings';
+import { Icon } from '../ui/Icon';
 import {
-  DEFAULT_THEME,
+  DEFAULT_GLASS,
   FONTS_NUM,
   FONTS_TEXT,
-  PRESETS,
-  themeFromPreset,
+  defaultThemeLibrary,
+  newThemeId,
+  sameStyle,
+  styleOf,
+  themeFromSaved,
   type FontNum,
   type FontText,
+  type SavedTheme,
   type Theme,
 } from '../../lib/theme';
 
@@ -33,43 +38,141 @@ function Swatches({ c }: { c: Pick<Theme, 'bgFrom' | 'bgTo' | 'accent' | 'gain' 
   );
 }
 
+function glassLabel(g: number) {
+  if (g <= 5) return 'Très transparent';
+  if (g < DEFAULT_GLASS) return 'Transparent';
+  if (g === DEFAULT_GLASS) return "Verre d'origine";
+  if (g < 70) return 'Dépoli';
+  if (g < 100) return 'Presque opaque';
+  return 'Opaque';
+}
+
 export function AppearanceSettings() {
   const { settings, updateShared, sharedStatus, repo } = useSettings();
-  const update = (patch: { theme: Theme }) => void updateShared(patch).catch(() => {});
+  const save = (patch: { theme?: Theme; themeLibrary?: SavedTheme[] }) => void updateShared(patch).catch(() => {});
+  const update = (patch: { theme: Theme }) => save(patch);
   const t = settings.theme;
-  const set = (patch: Partial<Theme>, custom = true) => update({ theme: { ...t, ...patch, ...(custom ? { preset: 'custom' } : {}) } });
+  const library = settings.themeLibrary;
+  // les retouches gardent le thème d'origine sélectionné (pour pouvoir les enregistrer dedans)
+  const set = (patch: Partial<Theme>) => update({ theme: { ...t, ...patch } });
+
+  // le curseur bouge vite : affichage immédiat, enregistrement groupé (updateShared regroupe déjà les envois)
+  const setGlass = (glass: number) => set({ glass });
+
+  const active = library.find((x) => x.id === t.preset) ?? null;
+  const modified = active ? !sameStyle(active.style, styleOf(t)) : true;
+
+  const apply = (x: SavedTheme) => update({ theme: themeFromSaved(x, t.scale) });
+  const saveInto = (x: SavedTheme) =>
+    save({ themeLibrary: library.map((y) => (y.id === x.id ? { ...y, style: styleOf(t) } : y)), theme: { ...t, preset: x.id } });
+  const saveAsNew = () => {
+    const name = prompt('Nom du nouveau thème :', active ? `${active.name} (perso)` : 'Mon thème')?.trim();
+    if (!name) return;
+    const x: SavedTheme = { id: newThemeId(), name: name.slice(0, 40), style: styleOf(t) };
+    save({ themeLibrary: [...library, x], theme: { ...t, preset: x.id } });
+  };
+  const rename = (x: SavedTheme) => {
+    const name = prompt('Nouveau nom du thème :', x.name)?.trim();
+    if (name) save({ themeLibrary: library.map((y) => (y.id === x.id ? { ...y, name: name.slice(0, 40) } : y)) });
+  };
+  const remove = (x: SavedTheme) => {
+    if (library.length <= 1) return;
+    if (!confirm(`Supprimer le thème « ${x.name} » ?`)) return;
+    save({ themeLibrary: library.filter((y) => y.id !== x.id), ...(t.preset === x.id ? { theme: { ...t, preset: 'custom' } } : {}) });
+  };
+  const restore = () => {
+    if (!confirm("Remettre les thèmes d'origine tels qu'ils étaient au départ ? Vos thèmes personnels sont conservés.")) return;
+    const originals = defaultThemeLibrary();
+    const ids = new Set(originals.map((o) => o.id));
+    save({ themeLibrary: [...originals, ...library.filter((y) => !ids.has(y.id))] });
+  };
 
   return (
     <GlassCard title="Apparence du dashboard" delay={0.05}>
       <div className="space-y-6">
         <div>
-          <span className="label">Thèmes prêts à l'emploi</span>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="label !mb-0">Mes thèmes</span>
+            <button type="button" className="text-[11px] text-white/45 hover:text-gold" onClick={restore}>
+              Restaurer les thèmes d'origine
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {Object.entries(PRESETS).map(([id, p]) => (
+            {library.map((x) => (
               <button
-                key={id}
+                key={x.id}
                 type="button"
-                onClick={() => update({ theme: themeFromPreset(id, t.scale) })}
+                onClick={() => apply(x)}
                 className={`rounded-2xl border p-2 text-left transition ${
-                  t.preset === id ? 'border-gold bg-white/[0.08]' : 'border-white/10 hover:border-white/30'
+                  t.preset === x.id ? 'border-gold bg-white/[0.08]' : 'border-white/10 hover:border-white/30'
                 }`}
-                aria-pressed={t.preset === id}
+                aria-pressed={t.preset === x.id}
               >
-                <Swatches c={p.colors} />
+                <Swatches c={x.style} />
                 <div className="mt-2 flex items-center justify-between gap-2 px-1">
-                  <span className="text-sm text-white" style={{ fontFamily: FONTS_TEXT[p.fontText].family }}>
-                    {p.label}
+                  <span className="truncate text-sm text-white" style={{ fontFamily: FONTS_TEXT[x.style.fontText]?.family }}>
+                    {x.name}
                   </span>
-                  <span className="truncate text-[10px] text-white/40">{FONTS_TEXT[p.fontText].label}</span>
+                  <span className="shrink-0 truncate text-[10px] text-white/40">{FONTS_TEXT[x.style.fontText]?.label}</span>
                 </div>
               </button>
             ))}
+            <button
+              type="button"
+              onClick={saveAsNew}
+              className="flex min-h-[6.5rem] flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-white/20 p-2 text-sm text-white/60 transition hover:border-gold/60 hover:text-gold"
+            >
+              <Icon name="plus" size={20} />
+              Nouveau thème
+              <span className="text-[10px] text-white/40">avec les couleurs actuelles</span>
+            </button>
+          </div>
+
+          {/* Actions sur le thème actif */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-sm">
+            <span className="mr-auto text-white/70">
+              {active ? (
+                <>
+                  Thème actif : <strong className="text-white">{active.name}</strong>
+                  {modified && <span className="text-gold"> · modifié, non enregistré</span>}
+                </>
+              ) : (
+                <span className="text-gold">Couleurs personnalisées, non enregistrées</span>
+              )}
+            </span>
+            {active && modified && (
+              <button type="button" className="btn-gold !px-3 !py-1.5 !text-xs" onClick={() => saveInto(active)}>
+                Enregistrer dans « {active.name} »
+              </button>
+            )}
+            {modified && (
+              <button type="button" className="btn-ghost !px-3 !py-1.5 !text-xs" onClick={saveAsNew}>
+                Enregistrer comme nouveau thème
+              </button>
+            )}
+            {active && modified && (
+              <button type="button" className="btn-ghost !px-3 !py-1.5 !text-xs" onClick={() => apply(active)}>
+                Annuler les retouches
+              </button>
+            )}
+            {active && (
+              <>
+                <button type="button" className="btn-ghost !px-2.5 !py-1.5" onClick={() => rename(active)} aria-label="Renommer le thème" title="Renommer">
+                  <Icon name="edit" size={14} />
+                </button>
+                {library.length > 1 && (
+                  <button type="button" className="btn-danger !px-2.5 !py-1.5" onClick={() => remove(active)} aria-label="Supprimer le thème" title="Supprimer">
+                    <Icon name="trash" size={14} />
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
 
         <div>
           <span className="label">
-            Couleurs {t.preset === 'custom' && <span className="normal-case tracking-normal text-gold">· personnalisées</span>}
+            Couleurs du thème {active && <span className="normal-case tracking-normal text-white/40">· retouchez-les puis enregistrez</span>}
           </span>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {COLOR_FIELDS.map((f) => (
@@ -92,7 +195,7 @@ export function AppearanceSettings() {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className="label">Police du texte</span>
-            <select className="field" value={t.fontText} onChange={(e) => set({ fontText: e.target.value as FontText }, false)}>
+            <select className="field" value={t.fontText} onChange={(e) => set({ fontText: e.target.value as FontText })}>
               {Object.entries(FONTS_TEXT).map(([id, f]) => (
                 <option key={id} value={id}>
                   {f.label}
@@ -102,7 +205,7 @@ export function AppearanceSettings() {
           </label>
           <label className="block">
             <span className="label">Police des chiffres</span>
-            <select className="field" value={t.fontNum} onChange={(e) => set({ fontNum: e.target.value as FontNum }, false)}>
+            <select className="field" value={t.fontNum} onChange={(e) => set({ fontNum: e.target.value as FontNum })}>
               {Object.entries(FONTS_NUM).map(([id, f]) => (
                 <option key={id} value={id}>
                   {f.label}
@@ -118,7 +221,7 @@ export function AppearanceSettings() {
             <Segmented
               ariaLabel="Taille du texte"
               value={t.scale}
-              onChange={(v) => set({ scale: v }, false)}
+              onChange={(v) => set({ scale: v })}
               options={[
                 { value: 'sm', label: 'Petite' },
                 { value: 'md', label: 'Normale' },
@@ -126,9 +229,29 @@ export function AppearanceSettings() {
               ]}
             />
           </div>
-          <button type="button" className="btn-ghost" onClick={() => update({ theme: DEFAULT_THEME })}>
-            Thème par défaut
-          </button>
+          <div className="min-w-[14rem] flex-1">
+            <div className="flex items-center justify-between">
+              <span className="label">Transparence des cartes</span>
+              <span className="num text-xs text-gold">{glassLabel(t.glass ?? DEFAULT_GLASS)}</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={t.glass ?? DEFAULT_GLASS}
+              onChange={(e) => setGlass(Number(e.target.value))}
+              className="w-full accent-gold"
+              aria-label="Transparence des cartes"
+            />
+            <div className="flex justify-between text-[10px] text-white/40">
+              <span>Très transparent</span>
+              <button type="button" className="hover:text-gold" onClick={() => setGlass(DEFAULT_GLASS)}>
+                Verre d'origine
+              </button>
+              <span>Opaque</span>
+            </div>
+          </div>
         </div>
 
         <div>
