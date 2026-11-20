@@ -12,7 +12,7 @@ import { exportJson, importJson } from '../lib/export/json';
 import { parseDecimal, toInput } from '../lib/format';
 import { clearLocalTrades } from '../lib/storage';
 import type { Trade } from '../types/trade';
-import { APP_VERSION, BUILD_TIME } from '../lib/pwa';
+import { APP_VERSION, BUILD_TIME, forceUpdate } from '../lib/pwa';
 
 function Row({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
@@ -307,6 +307,11 @@ export default function SettingsPage() {
           </button>
         )}
       </GlassCard>
+      <div className="flex justify-center">
+        <button className="btn-ghost" onClick={() => void forceUpdate()}>
+          <Icon name="refresh" size={16} /> Forcer la mise à jour de l'app
+        </button>
+      </div>
       <p className="pb-4 text-center text-[11px] text-white/35">
         Version {APP_VERSION} du {BUILD_TIME.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} ·{' '}
         {trades.length} trade{trades.length > 1 ? 's' : ''} · {mode === 'github' ? `${settings.owner}/${settings.repo}` : 'mode démo (local)'}

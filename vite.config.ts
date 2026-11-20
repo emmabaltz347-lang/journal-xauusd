@@ -6,7 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Nom du repo GitHub : sert de chemin de base sur GitHub Pages
 const base = process.env.VITE_BASE ?? '/journal-xauusd/';
 
-const version = (process.env.GITHUB_SHA ?? 'dev').slice(0, 7);
+// APP_VERSION permet aux copies de l'app (autres comptes) d'afficher la version d'origine
+const version = (process.env.APP_VERSION ?? process.env.GITHUB_SHA ?? 'dev').slice(0, 7);
 
 export default defineConfig({
   base,
@@ -16,9 +17,16 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    {
+      // version.json : permet à l'app de savoir qu'une nouvelle version est en ligne
+      name: 'version-json',
+      generateBundle() {
+        this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version }) });
+      },
+    },
     VitePWA({
-      // mise à jour gérée dans src/lib/pwa.ts (sans recharger pendant une saisie)
-      registerType: 'prompt',
+      // la nouvelle version prend la main immédiatement (skipWaiting) ; le rechargement est géré dans src/lib/pwa.ts
+      registerType: 'autoUpdate',
       injectRegister: false,
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
@@ -40,7 +48,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        globIgnores: ['demo/**'],
+        globIgnores: ['demo/**', 'version.json'],
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 3_000_000,
         // Les appels à l'API GitHub ne sont jamais mis en cache
         navigateFallbackDenylist: [/^\/api/],
