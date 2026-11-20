@@ -145,6 +145,7 @@ Les réglages d'apparence (thème, couleurs, polices) sont aussi à faire une fo
 - **Sélection multiple** (Récap) : cases à cocher (sur mobile, bouton « Sélectionner ») pour modifier en une fois le compte, le risque, les lots, le taux, les émotions, la discipline ou les erreurs de plusieurs trades, ou pour les supprimer.
   - L'app se **met à jour toute seule** quand une nouvelle version est publiée (sauf pendant la saisie d'un trade : un bandeau propose alors la mise à jour). Le numéro de version est affiché en bas des Réglages.
 - **Captures** : prise de photo, galerie, glisser-déposer ou collage (⌘V). Les images sont compressées dans le navigateur (WebP, 1 600 px de large maximum, environ 50 à 150 Ko) avant le commit.
+- **Calendrier** (Dashboard) : résultat de chaque jour tradé (en € ou en R), nombre de trades, winrate et totaux par semaine et par mois ; un clic sur un jour ou une semaine filtre le dashboard.
 - **Filtres globaux** (période, sens, émotion, erreur) : ils s'appliquent aux KPI, aux graphiques et au récap. Pour une semaine, un mois, un trimestre ou une année, les flèches ‹ › permettent de naviguer d'une période à l'autre.
 - **Récap trades** (menu *Récap*, ou onglet du Dashboard) : un tableau récapitulatif par **semaine, mois ou trimestre** (nombre de trades, winrate, R, €, meilleur et pire trade) ; un clic sur une ligne filtre sur cette période. En dessous, la liste détaillée des trades.
 - **Exports** :

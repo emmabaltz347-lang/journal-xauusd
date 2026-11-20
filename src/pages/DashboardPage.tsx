@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { KpiGrid } from '../components/dashboard/KpiGrid';
+import { CalendarCard } from '../components/dashboard/CalendarCard';
 import { EquityChart } from '../components/dashboard/EquityChart';
 import { HourChart, RDistributionChart, WeekdayChart } from '../components/dashboard/BarCharts';
 import { FilterBar } from '../components/dashboard/FilterBar';
@@ -90,6 +91,7 @@ export default function DashboardPage() {
         {tab === 'stats' ? (
           <div className="space-y-4">
             <KpiGrid />
+            <CalendarCard />
             <EquityChart />
             <div className="grid gap-4 lg:grid-cols-3">
               <RDistributionChart />
