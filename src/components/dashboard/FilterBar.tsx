@@ -21,7 +21,6 @@ export function FilterBar() {
   const { filters: f, setFilters, reset, filtered } = useFilters();
   const { trades } = useTrades();
   const { settings } = useSettings();
-  const multi = settings.accounts.length > 1;
   const tags = useMemo(() => [...new Set(trades.flatMap((t) => t.errorTags))].sort(), [trades]);
   const set = (patch: Partial<typeof f>) => setFilters((x) => ({ ...x, ...patch }));
 
@@ -57,7 +56,7 @@ export function FilterBar() {
         </div>
       )}
       <div className="mt-2 grid grid-cols-3 items-center gap-2 md:flex md:flex-wrap">
-        {multi && (
+        {(
           <select
             className={`${sel} col-span-3 md:col-span-1 ${f.account !== 'all' ? '!border-gold/60 !text-gold' : ''}`}
             value={f.account}

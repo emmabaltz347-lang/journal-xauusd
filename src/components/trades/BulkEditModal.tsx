@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Modal } from '../ui/Modal';
 import { TagInput } from '../ui/TagInput';
 import { useSettings } from '../../hooks/useSettings';
@@ -98,7 +99,7 @@ export function BulkEditModal({ ids, open, onClose, onDone }: { ids: string[]; o
       }
     >
       <div className="space-y-4">
-        {settings.accounts.length > 1 && (
+        <div>
           <label className="block">
             <span className="label">Compte</span>
             <select className={sel} value={account} onChange={(e) => setAccount(e.target.value)}>
@@ -110,7 +111,15 @@ export function BulkEditModal({ ids, open, onClose, onDone }: { ids: string[]; o
               ))}
             </select>
           </label>
-        )}
+          {settings.accounts.length < 2 && (
+              <span className="mt-1 block text-[11px] text-white/45">
+                Un seul compte pour l'instant ·{' '}
+                <Link to="/reglages" className="text-gold underline">
+                  ajouter un compte
+                </Link>
+              </span>
+            )}
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <label className="block">
             <span className="label">Risque (%)</span>

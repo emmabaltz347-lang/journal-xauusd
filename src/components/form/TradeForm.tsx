@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { fetchEurUsdAt, type FxQuote } from '../../lib/fx';
 import { Icon } from '../ui/Icon';
@@ -275,7 +276,7 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
       <div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]">
         <GlassCard title="Exécution">
           <div className="space-y-4">
-            {settings.accounts.length > 1 && (
+            <div>
               <Field label="Compte">
                 <select className="field" value={d.accountId} onChange={(e) => changeAccount(e.target.value)}>
                   {settings.accounts.map((a) => (
@@ -285,7 +286,15 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
                   ))}
                 </select>
               </Field>
+              {settings.accounts.length < 2 && (
+              <span className="mt-1 block text-[11px] text-white/45">
+                Un seul compte pour l'instant ·{' '}
+                <Link to="/reglages" className="text-gold underline">
+                  ajouter un compte
+                </Link>
+              </span>
             )}
+            </div>
             <div className="flex [&>div]:w-full">
               <Segmented
                 size="lg"
