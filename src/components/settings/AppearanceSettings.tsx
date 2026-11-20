@@ -34,7 +34,8 @@ function Swatches({ c }: { c: Pick<Theme, 'bgFrom' | 'bgTo' | 'accent' | 'gain' 
 }
 
 export function AppearanceSettings() {
-  const { settings, update } = useSettings();
+  const { settings, updateShared, sharedStatus, repo } = useSettings();
+  const update = (patch: { theme: Theme }) => void updateShared(patch).catch(() => {});
   const t = settings.theme;
   const set = (patch: Partial<Theme>, custom = true) => update({ theme: { ...t, ...patch, ...(custom ? { preset: 'custom' } : {}) } });
 
@@ -146,7 +147,11 @@ export function AppearanceSettings() {
               <div className="num mt-1 text-xl font-semibold text-loss md:text-2xl">−2,00 R</div>
             </div>
           </div>
-          <p className="mt-2 text-[11px] text-white/40">S'applique tout de suite. Réglage propre à chaque appareil (Mac, iPhone).</p>
+          <p className="mt-2 text-[11px] text-white/40">
+            S'applique tout de suite{repo ? ' et sur tous vos appareils connectés' : ''}.
+            {sharedStatus === 'saving' && ' Enregistrement…'}
+            {sharedStatus === 'error' && ' ⚠️ Non synchronisé (réseau ou token).'}
+          </p>
         </div>
       </div>
     </GlassCard>

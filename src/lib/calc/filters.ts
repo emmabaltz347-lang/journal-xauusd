@@ -11,6 +11,8 @@ export interface Filters {
   direction: Direction | 'all';
   emotion: Emotion | 'all'; // émotion avant OU après
   errorTag: string | 'all' | 'none';
+  /** Identifiant du compte, ou 'all' pour tous les comptes */
+  account: string | 'all';
 }
 
 export const DEFAULT_FILTERS: Filters = {
@@ -21,6 +23,7 @@ export const DEFAULT_FILTERS: Filters = {
   direction: 'all',
   emotion: 'all',
   errorTag: 'all',
+  account: 'all',
 };
 
 /** Bornes [début, fin[ de la période courante, calculées en heure locale du navigateur */
@@ -54,9 +57,10 @@ export function periodRange(f: Filters, today = new Date()): [Date, Date] | null
   }
 }
 
-export function applyFilters<T extends Trade>(trades: T[], f: Filters, now = new Date()): T[] {
+export function applyFilters<T extends Trade>(trades: T[], f: Filters, now = new Date(), defaultAccountId = 'principal'): T[] {
   const range = periodRange(f, now);
   return trades.filter((t) => {
+    if (f.account && f.account !== 'all' && (t.accountId ?? defaultAccountId) !== f.account) return false;
     if (range) {
       const d = new Date(t.entryAt).getTime();
       if (d < range[0].getTime() || d >= range[1].getTime()) return false;
@@ -71,7 +75,7 @@ export function applyFilters<T extends Trade>(trades: T[], f: Filters, now = new
 
 export function isFiltered(f: Filters): boolean {
   return (
-    f.period !== 'all' || f.direction !== 'all' || f.emotion !== 'all' || f.errorTag !== 'all'
+    f.period !== 'all' || f.direction !== 'all' || f.emotion !== 'all' || f.errorTag !== 'all' || (!!f.account && f.account !== 'all')
   );
 }
 

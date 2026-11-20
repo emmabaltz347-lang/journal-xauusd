@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { fetchEurUsdAt, type FxQuote } from '../../lib/fx';
 import { Icon } from '../ui/Icon';
-import { DEFAULT_ERROR_TAGS, type Direction, type Emotion, type Trade } from '../../types/trade';
+import { DEFAULT_ERROR_TAGS, type Account, type Direction, type Emotion, type Trade } from '../../types/trade';
+import { accountIdOf } from '../../lib/calc/accounts';
+import { useFilters } from '../../hooks/useFilters';
+import { loadLastAccount, saveLastAccount } from '../../lib/storage';
 import {
   computePnlEur,
   lotsToEur,
@@ -48,6 +51,7 @@ interface Draft {
   stopLoss: string;
   takeProfit: string;
   exitPrice: string;
+  accountId: string;
   riskPercent: string;
   lots: string;
   eurUsd: string;
@@ -62,7 +66,7 @@ interface Draft {
   errorTags: string[];
 }
 
-function toDraft(t: Trade | undefined, defaultRisk: number, defaultEurUsd: number): Draft {
+function toDraft(t: Trade | undefined, account: Account, defaultEurUsd: number): Draft {
   return {
     direction: t?.direction ?? 'buy',
     entryAt: t ? isoToLocalInput(t.entryAt) : nowLocalInput(),
@@ -71,7 +75,8 @@ function toDraft(t: Trade | undefined, defaultRisk: number, defaultEurUsd: numbe
     stopLoss: toInput(t?.stopLoss),
     takeProfit: toInput(t?.takeProfit),
     exitPrice: toInput(t?.exitPrice),
-    riskPercent: toInput(t?.riskPercent ?? defaultRisk),
+    accountId: account.id,
+    riskPercent: toInput(t?.riskPercent ?? account.defaultRiskPercent),
     lots: toInput(t?.lots),
     eurUsd: toInput(t?.eurUsd ?? defaultEurUsd),
     eurManual: t?.pnlManual != null,
@@ -89,7 +94,26 @@ function toDraft(t: Trade | undefined, defaultRisk: number, defaultEurUsd: numbe
 export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade) => void }) {
   const { settings } = useSettings();
   const { trades, computed, saveTrade, syncing } = useTrades();
-  const [d, setD] = useState<Draft>(() => toDraft(trade, settings.defaultRiskPercent, settings.eurUsd));
+  const { filters } = useFilters();
+  // compte proposé : celui du trade, sinon le compte filtré, sinon le dernier utilisé, sinon le principal
+  const [d, setD] = useState<Draft>(() => {
+    const accs = settings.accounts;
+    const last = loadLastAccount();
+    const id = trade
+      ? accountIdOf(trade, accs)
+      : filters.account !== 'all' && accs.some((a) => a.id === filters.account)
+        ? filters.account
+        : accs.some((a) => a.id === last)
+          ? last!
+          : accs[0].id;
+    return toDraft(trade, accs.find((a) => a.id === id) ?? accs[0], settings.eurUsd);
+  });
+  const account = settings.accounts.find((a) => a.id === d.accountId) ?? settings.accounts[0];
+  const riskTouched = useRef(!!trade);
+  const changeAccount = (id: string) => {
+    const acc = settings.accounts.find((a) => a.id === id);
+    setD((x) => ({ ...x, accountId: id, ...(acc && !riskTouched.current ? { riskPercent: toInput(acc.defaultRiskPercent) } : {}) }));
+  };
   const [images, setImages] = useState<{ before?: ImageChange; after?: ImageChange }>({});
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -150,9 +174,9 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
   // Capital au moment du trade = capital de départ + € des trades antérieurs
   const capitalBefore = useMemo(() => {
     const at = d.entryAt ? new Date(localInputToIso(d.entryAt)).getTime() : Date.now();
-    const prev = computed.filter((t) => t.id !== trade?.id && new Date(t.entryAt).getTime() < at);
-    return prev.length ? prev[prev.length - 1].capitalAfter : settings.startingCapital;
-  }, [computed, d.entryAt, trade?.id, settings.startingCapital]);
+    const prev = computed.filter((t) => t.id !== trade?.id && t.accountId === account.id && new Date(t.entryAt).getTime() < at);
+    return prev.length ? prev[prev.length - 1].capitalAfter : account.startingCapital;
+  }, [computed, d.entryAt, trade?.id, account]);
   const rate = parseDecimal(d.eurUsd);
   const calc = { pipsPerDollar: settings.pipsPerDollar, contractSize: settings.contractSize, eurUsd: rate && rate > 0 ? rate : settings.eurUsd };
   const lots = parseDecimal(d.lots);
@@ -198,6 +222,7 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
       // on part du trade existant pour ne perdre aucun champ (y compris d'une version plus récente)
       ...(trade ?? {}),
       id: trade?.id ?? makeId(d.entryAt),
+      accountId: account.id,
       symbol: 'XAUUSD',
       entryAt: localInputToIso(d.entryAt),
       exitAt: d.exitAt ? localInputToIso(d.exitAt) : null,
@@ -225,6 +250,7 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
     setSaving(true);
     try {
       await saveTrade(t, images);
+      saveLastAccount(account.id);
       onDone(t);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -249,6 +275,17 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
       <div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]">
         <GlassCard title="Exécution">
           <div className="space-y-4">
+            {settings.accounts.length > 1 && (
+              <Field label="Compte">
+                <select className="field" value={d.accountId} onChange={(e) => changeAccount(e.target.value)}>
+                  {settings.accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             <div className="flex [&>div]:w-full">
               <Segmented
                 size="lg"
@@ -308,7 +345,15 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
               <Field label="Risque (%)" hint={plannedRiskEur != null ? `≈ ${fmtEur(plannedRiskEur)}` : undefined}>
-                <input className="field num" inputMode="decimal" value={d.riskPercent} onChange={(e) => set('riskPercent', e.target.value)} />
+                <input
+                  className="field num"
+                  inputMode="decimal"
+                  value={d.riskPercent}
+                  onChange={(e) => {
+                    riskTouched.current = true;
+                    set('riskPercent', e.target.value);
+                  }}
+                />
               </Field>
               <Field label="Lots" hint="ex. 0,20">
                 <input

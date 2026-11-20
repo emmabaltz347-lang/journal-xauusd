@@ -22,6 +22,7 @@ export function TradesRecap({ onOpen }: { onOpen: (t: ComputedTrade) => void }) 
   const recap = useMemo(() => recapByPeriod(filtered, kind), [filtered, kind]);
 
   const filtersLabel = [
+    filters.account !== 'all' && `compte : ${settings.accounts.find((a) => a.id === filters.account)?.name ?? ''}`,
     filters.direction !== 'all' && (filters.direction === 'buy' ? 'achats' : 'ventes'),
     filters.emotion !== 'all' && `émotion : ${filters.emotion}`,
     filters.errorTag === 'none' ? 'sans erreur' : filters.errorTag !== 'all' && `erreur : ${filters.errorTag}`,

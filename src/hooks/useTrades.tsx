@@ -28,6 +28,10 @@ interface Ctx {
   computed: ComputedTrade[];
   saveTrade: (t: Trade, images: { before?: ImageChange; after?: ImageChange }) => Promise<void>;
   deleteTrade: (id: string) => Promise<void>;
+  /** Modifie plusieurs trades en un seul commit */
+  updateMany: (ids: string[], patch: (t: Trade) => Trade) => Promise<void>;
+  /** Supprime plusieurs trades (et leurs captures) en un seul commit */
+  deleteMany: (ids: string[]) => Promise<void>;
   importTrades: (incoming: Trade[], replace: boolean) => Promise<void>;
   reload: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -184,6 +188,33 @@ export function TradesProvider({ children }: { children: ReactNode }) {
     [persist, repo],
   );
 
+  const updateMany = useCallback<Ctx['updateMany']>(
+    async (ids, patch) => {
+      const set = new Set(ids);
+      const now = new Date().toISOString();
+      await persist(
+        (list) => list.map((t) => (set.has(t.id) ? { ...patch(t), updatedAt: now } : t)),
+        `✏️ Modification groupée de ${ids.length} trade${ids.length > 1 ? 's' : ''}`,
+      );
+    },
+    [persist],
+  );
+
+  const deleteMany = useCallback<Ctx['deleteMany']>(
+    async (ids) => {
+      const set = new Set(ids);
+      const removed = tradesRef.current.filter((t) => set.has(t.id));
+      await persist((list) => list.filter((t) => !set.has(t.id)), `🗑️ Suppression de ${ids.length} trade${ids.length > 1 ? 's' : ''}`);
+      if (repo) {
+        removed
+          .flatMap((t) => [t.screenshots.before, t.screenshots.after])
+          .filter((p): p is string => !!p && !p.startsWith('data:'))
+          .forEach((p) => void removeScreenshot(repo, p).catch(() => {}));
+      }
+    },
+    [persist, repo],
+  );
+
   const importTrades = useCallback<Ctx['importTrades']>(
     (incoming, replace) =>
       persist(
@@ -209,11 +240,11 @@ export function TradesProvider({ children }: { children: ReactNode }) {
     () => ({ pipsPerDollar: settings.pipsPerDollar, contractSize: settings.contractSize, eurUsd: settings.eurUsd }),
     [settings.pipsPerDollar, settings.contractSize, settings.eurUsd],
   );
-  const computed = useMemo(() => computeTrades(trades, settings.startingCapital, calc), [trades, settings.startingCapital, calc]);
+  const computed = useMemo(() => computeTrades(trades, settings.accounts, calc), [trades, settings.accounts, calc]);
 
   const value = useMemo(
-    () => ({ mode, status, error, syncing, trades, computed, saveTrade, deleteTrade, importTrades, reload, refresh, lastSync, localOnly, resetDemo }),
-    [mode, status, error, syncing, trades, computed, saveTrade, deleteTrade, importTrades, reload, refresh, lastSync, localOnly, resetDemo],
+    () => ({ mode, status, error, syncing, trades, computed, saveTrade, deleteTrade, updateMany, deleteMany, importTrades, reload, refresh, lastSync, localOnly, resetDemo }),
+    [mode, status, error, syncing, trades, computed, saveTrade, deleteTrade, updateMany, deleteMany, importTrades, reload, refresh, lastSync, localOnly, resetDemo],
   );
   return <TradesContext.Provider value={value}>{children}</TradesContext.Provider>;
 }

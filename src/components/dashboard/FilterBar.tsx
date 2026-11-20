@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useFilters } from '../../hooks/useFilters';
 import { useTrades } from '../../hooks/useTrades';
+import { useSettings } from '../../hooks/useSettings';
 import { isCurrentPeriod, isFiltered, periodLabel, shiftAnchor, type PeriodKind } from '../../lib/calc/filters';
 import { Icon } from '../ui/Icon';
 import { EMOTIONS, EMOTION_EMOJI } from '../../types/trade';
@@ -19,6 +20,8 @@ const sel = 'field min-w-0 !px-2.5 !py-2 !text-xs md:!w-auto md:!px-3.5 md:!pr-8
 export function FilterBar() {
   const { filters: f, setFilters, reset, filtered } = useFilters();
   const { trades } = useTrades();
+  const { settings } = useSettings();
+  const multi = settings.accounts.length > 1;
   const tags = useMemo(() => [...new Set(trades.flatMap((t) => t.errorTags))].sort(), [trades]);
   const set = (patch: Partial<typeof f>) => setFilters((x) => ({ ...x, ...patch }));
 
@@ -54,6 +57,21 @@ export function FilterBar() {
         </div>
       )}
       <div className="mt-2 grid grid-cols-3 items-center gap-2 md:flex md:flex-wrap">
+        {multi && (
+          <select
+            className={`${sel} col-span-3 md:col-span-1 ${f.account !== 'all' ? '!border-gold/60 !text-gold' : ''}`}
+            value={f.account}
+            onChange={(e) => set({ account: e.target.value })}
+            aria-label="Compte"
+          >
+            <option value="all">Tous les comptes</option>
+            {settings.accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                Compte : {a.name}
+              </option>
+            ))}
+          </select>
+        )}
         {f.period === 'custom' && (
           <>
             <input type="date" className={sel} value={f.from ?? ''} onChange={(e) => set({ from: e.target.value || null })} aria-label="Du" />

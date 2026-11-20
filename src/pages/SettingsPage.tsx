@@ -11,7 +11,8 @@ import { testAccess } from '../lib/github/client';
 import { exportJson, importJson } from '../lib/export/json';
 import { parseDecimal, toInput } from '../lib/format';
 import { clearLocalTrades } from '../lib/storage';
-import type { Trade } from '../types/trade';
+import type { Account, Trade } from '../types/trade';
+import { newAccount } from '../lib/calc/accounts';
 import { APP_VERSION, BUILD_TIME, forceUpdate } from '../lib/pwa';
 
 function Row({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
@@ -26,7 +27,7 @@ function Row({ label, hint, children }: { label: string; hint?: ReactNode; child
 
 export default function SettingsPage() {
   const { settings, update, updateShared, pullShared, sharedStatus } = useSettings();
-  const { trades, mode, importTrades, resetDemo, reload, lastSync, localOnly } = useTrades();
+  const { trades, computed, mode, importTrades, resetDemo, reload, lastSync, localOnly } = useTrades();
   const toast = useToast();
   const file = useRef<HTMLInputElement>(null);
 
@@ -38,8 +39,30 @@ export default function SettingsPage() {
   });
   const [showToken, setShowToken] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [capital, setCapital] = useState(toInput(settings.startingCapital));
-  const [risk, setRisk] = useState(toInput(settings.defaultRiskPercent));
+  // comptes en cours d'édition (texte saisi)
+  type AccDraft = { id: string; name: string; capital: string; risk: string };
+  const toDrafts = (list: Account[]): AccDraft[] =>
+    list.map((a) => ({ id: a.id, name: a.name, capital: toInput(a.startingCapital), risk: toInput(a.defaultRiskPercent) }));
+  const [accDrafts, setAccDrafts] = useState<AccDraft[]>(() => toDrafts(settings.accounts));
+  const setAcc = (id: string, patch: Partial<AccDraft>) => setAccDrafts((l) => l.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+  const tradeCount = (id: string) => computed.filter((t) => t.accountId === id).length;
+  const addAccount = () => {
+    const ref = accDrafts[0];
+    const base: Account[] = accDrafts.map((a) => ({
+      id: a.id,
+      name: a.name,
+      startingCapital: parseDecimal(a.capital) ?? settings.accounts[0].startingCapital,
+      defaultRiskPercent: parseDecimal(a.risk) ?? settings.accounts[0].defaultRiskPercent,
+    }));
+    const n = newAccount(base, base.find((a) => a.id === ref?.id));
+    setAccDrafts((l) => [...l, ...toDrafts([n])]);
+  };
+  const removeAccount = (id: string) => {
+    const n = tradeCount(id);
+    if (n) return toast(`Ce compte contient ${n} trade${n > 1 ? 's' : ''} : déplacez-les d'abord vers un autre compte (Récap → Sélectionner → Modifier → Compte).`, 'error');
+    if (accDrafts.length <= 1) return toast('Il faut garder au moins un compte.', 'error');
+    setAccDrafts((l) => l.filter((a) => a.id !== id));
+  };
   const [pipsPerDollar, setPipsPerDollar] = useState(toInput(settings.pipsPerDollar));
   const [contractSize, setContractSize] = useState(toInput(settings.contractSize));
   const [eurUsd, setEurUsd] = useState(toInput(settings.eurUsd));
@@ -47,12 +70,12 @@ export default function SettingsPage() {
 
   // les champs suivent les réglages reçus d'un autre appareil
   useEffect(() => {
-    setCapital(toInput(settings.startingCapital));
-    setRisk(toInput(settings.defaultRiskPercent));
+    setAccDrafts(toDrafts(settings.accounts));
     setPipsPerDollar(toInput(settings.pipsPerDollar));
     setContractSize(toInput(settings.contractSize));
     setEurUsd(toInput(settings.eurUsd));
-  }, [settings.startingCapital, settings.defaultRiskPercent, settings.pipsPerDollar, settings.contractSize, settings.eurUsd]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.accounts, settings.pipsPerDollar, settings.contractSize, settings.eurUsd]);
   const [fetchingRate, setFetchingRate] = useState(false);
 
   /** Taux de référence BCE du jour (api.frankfurter.app, gratuit, sans clé) */
@@ -118,16 +141,22 @@ export default function SettingsPage() {
   };
 
   const saveTrading = async () => {
-    const c = parseDecimal(capital);
-    const r = parseDecimal(risk);
+    const accounts: Account[] = [];
+    for (const a of accDrafts) {
+      const c = parseDecimal(a.capital);
+      const r = parseDecimal(a.risk);
+      if (!a.name.trim()) return toast('Chaque compte doit avoir un nom.', 'error');
+      if (c == null || c <= 0 || r == null || r <= 0) return toast(`${a.name} : capital et risque doivent être positifs.`, 'error');
+      accounts.push({ id: a.id, name: a.name.trim(), startingCapital: c, defaultRiskPercent: r });
+    }
+    if (new Set(accounts.map((a) => a.name.toLowerCase())).size !== accounts.length) return toast('Deux comptes ont le même nom.', 'error');
     const p = parseDecimal(pipsPerDollar);
     const cs = parseDecimal(contractSize);
     const fx = parseDecimal(eurUsd);
-    if (c == null || c <= 0 || r == null || r <= 0) return toast('Capital et risque doivent être positifs.', 'error');
     if (p == null || p <= 0 || cs == null || cs <= 0 || fx == null || fx <= 0)
       return toast('Pips, taille de lot et taux EUR/USD doivent être positifs.', 'error');
     try {
-      await updateShared({ startingCapital: c, defaultRiskPercent: r, pipsPerDollar: p, contractSize: cs, eurUsd: fx });
+      await updateShared({ accounts, pipsPerDollar: p, contractSize: cs, eurUsd: fx });
       toast(mode === 'github' ? 'Réglages enregistrés pour tous vos appareils' : 'Réglages enregistrés', 'success');
     } catch (e) {
       toast(`Enregistré sur cet appareil, mais pas sur GitHub : ${e instanceof Error ? e.message : e}`, 'error');
@@ -148,10 +177,10 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <PageHeader title="Réglages" subtitle="Capital, risque, apparence et synchronisation · stockés dans ce navigateur" />
+      <PageHeader title="Réglages" subtitle="Comptes, apparence et synchronisation · communs à vos appareils connectés (sauf le token)" />
 
       <GlassCard
-        title="Capital & risque"
+        title="Comptes, capital & risque"
         action={
           mode === 'github' && (
             <span className={`chip ${sharedStatus === 'error' ? 'border-loss/40 text-loss' : 'border-gain/30 text-gain'}`}>
@@ -160,15 +189,44 @@ export default function SettingsPage() {
           )
         }
       >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Row label="Capital de départ (€)" hint="Le capital actuel = départ + gains cumulés. Les € de chaque trade sont recalculés.">
-            <input className="field num" inputMode="decimal" value={capital} onChange={(e) => setCapital(e.target.value)} />
-          </Row>
-          <Row label="Risque par défaut (%)" hint="Utilisé seulement quand vous ne renseignez pas de lots.">
-            <input className="field num" inputMode="decimal" value={risk} onChange={(e) => setRisk(e.target.value)} />
-          </Row>
+        <div className="space-y-3">
+          {accDrafts.map((a, i) => (
+            <div key={a.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1.4fr_1fr_0.8fr_auto] sm:items-end">
+                <Row label={i === 0 ? 'Nom du compte (principal)' : 'Nom du compte'}>
+                  <input className="field" value={a.name} onChange={(e) => setAcc(a.id, { name: e.target.value })} placeholder="ex. FTMO 100k" />
+                </Row>
+                <Row label="Capital de départ (€)">
+                  <input className="field num" inputMode="decimal" value={a.capital} onChange={(e) => setAcc(a.id, { capital: e.target.value })} />
+                </Row>
+                <Row label="Risque par défaut (%)">
+                  <input className="field num" inputMode="decimal" value={a.risk} onChange={(e) => setAcc(a.id, { risk: e.target.value })} />
+                </Row>
+                <div className="flex items-center justify-between gap-2 sm:justify-end">
+                  <span className="text-[11px] text-white/45 sm:hidden">
+                    {tradeCount(a.id)} trade{tradeCount(a.id) > 1 ? 's' : ''}
+                  </span>
+                  {accDrafts.length > 1 && (
+                    <button type="button" className="btn-danger !px-3 !py-2.5" onClick={() => removeAccount(a.id)} aria-label={`Supprimer ${a.name}`}>
+                      <Icon name="trash" size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="mt-1.5 hidden text-[11px] text-white/45 sm:block">
+                {tradeCount(a.id)} trade{tradeCount(a.id) > 1 ? 's' : ''} · le capital actuel = départ + gains cumulés de ce compte
+              </p>
+            </div>
+          ))}
+          <button type="button" className="btn-ghost w-full border-dashed" onClick={addAccount}>
+            <Icon name="plus" size={16} /> Ajouter un compte
+          </button>
+          <p className="text-[11px] text-white/45">
+            Un nouveau compte reprend le capital et le % de risque du compte principal (modifiables). Pips, onces par lot et taux EUR/USD ci-dessous
+            sont communs à tous les comptes.
+          </p>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-3">
           <Row label="Pips pour 1 $" hint="10 : de 3903,56 à 3913,56 = 100 pips">
             <input className="field num" inputMode="decimal" value={pipsPerDollar} onChange={(e) => setPipsPerDollar(e.target.value)} />
           </Row>

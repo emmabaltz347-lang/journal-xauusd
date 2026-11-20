@@ -10,6 +10,7 @@ import { StarRating } from '../ui/StarRating';
 import { Screenshot } from './Thumbnail';
 import { useTrades } from '../../hooks/useTrades';
 import { useToast } from '../../hooks/useToast';
+import { useSettings } from '../../hooks/useSettings';
 
 function Info({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -36,6 +37,8 @@ export function DirectionBadge({ d }: { d: 'buy' | 'sell' }) {
 export function TradeDetailModal({ trade, onClose }: { trade: ComputedTrade | null; onClose: () => void }) {
   const navigate = useNavigate();
   const { deleteTrade } = useTrades();
+  const { settings } = useSettings();
+  const accountName = trade && settings.accounts.length > 1 ? settings.accounts.find((a) => a.id === trade.accountId)?.name : null;
   const toast = useToast();
   const [confirm, setConfirm] = useState(false);
   const t = trade;
@@ -71,6 +74,7 @@ export function TradeDetailModal({ trade, onClose }: { trade: ComputedTrade | nu
                 </span>
               )}
               {t.outcome && <span className="chip">{t.outcome === 'tp' ? 'Take profit' : 'Stop loss'}</span>}
+              {accountName && <span className="chip border-gold/40 text-gold">{accountName}</span>}
             </div>
             <div className="mt-1 text-sm text-white/55 first-letter:uppercase">
               {fmtDateLong(t.entryAt)}

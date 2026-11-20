@@ -48,6 +48,8 @@ export const TradeSchema = z.object({
   lots: z.number().positive().nullable().default(null),
   /** Résultat en € saisi à la main (montant exact du broker), prioritaire sur le calcul */
   pnlManual: z.number().nullable().default(null),
+  /** Compte de trading (null = compte principal) */
+  accountId: z.string().nullable().default(null),
   /** Taux EUR/USD utilisé pour ce trade (figé à l'enregistrement) */
   eurUsd: z.number().positive().nullable().default(null),
   rMultiple: z.number().nullable(),
@@ -78,6 +80,13 @@ export type TradesFile = z.infer<typeof TradesFileSchema>;
 
 import type { Theme } from '../lib/theme';
 
+export interface Account {
+  id: string;
+  name: string;
+  startingCapital: number;
+  defaultRiskPercent: number;
+}
+
 export interface Settings {
   githubToken: string;
   owner: string;
@@ -87,6 +96,8 @@ export interface Settings {
   defaultRiskPercent: number;
   knownErrorTags: string[];
   theme: Theme;
+  /** Comptes de trading (le premier est le compte principal) */
+  accounts: Account[];
   /** Nombre de pips pour 1 $ de mouvement sur l'or (10 : 3903,56 → 3913,56 = 100 pips) */
   pipsPerDollar: number;
   /** Onces par lot standard (100 chez la plupart des brokers) */
@@ -96,7 +107,9 @@ export interface Settings {
 }
 
 /** Trade enrichi par les calculs (jamais stocké) */
-export interface ComputedTrade extends Trade {
+export type ComputedTrade = Trade & {
+  /** Compte résolu (jamais null) */
+  accountId: string;
   r: number; // R effectif (0 si trade ouvert)
   capitalBefore: number;
   pnlEur: number;
@@ -107,4 +120,4 @@ export interface ComputedTrade extends Trade {
   riskEur: number;
   /** Origine du résultat en € */
   pnlSource: 'manual' | 'lots' | 'risk';
-}
+};

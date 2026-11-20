@@ -18,6 +18,7 @@ export function mkTrade(p: Partial<Trade> = {}): Trade {
     lots: null,
     pnlManual: null,
     eurUsd: null,
+    accountId: null,
     rMultiple: null,
     rManual: false,
     screenshots: { before: null, after: null },

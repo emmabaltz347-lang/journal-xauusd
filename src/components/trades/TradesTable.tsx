@@ -1,4 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { BulkEditModal } from './BulkEditModal';
+import { Modal } from '../ui/Modal';
+import { useTrades } from '../../hooks/useTrades';
+import { useSettings } from '../../hooks/useSettings';
+import { useToast } from '../../hooks/useToast';
 import type { ComputedTrade } from '../../types/trade';
 import { EMOTION_EMOJI } from '../../types/trade';
 import { fmtDate, fmtEur, fmtPrice, fmtR, fmtTime, resultClass } from '../../lib/format';
@@ -64,6 +70,89 @@ export function TradesTable({ trades, onOpen }: { trades: ComputedTrade[]; onOpe
 
   const toggle = (key: SortKey) => setSort((s) => (s.key === key ? { key, dir: (s.dir * -1) as 1 | -1 } : { key, dir: -1 }));
 
+  // --- sélection multiple ----------------------------------------------------------
+  const { deleteMany } = useTrades();
+  const { settings } = useSettings();
+  const toast = useToast();
+  const multiAccount = settings.accounts.length > 1;
+  const accountName = (id: string) => settings.accounts.find((a) => a.id === id)?.name ?? '';
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selecting, setSelecting] = useState(false); // mode sélection sur mobile
+  const [editOpen, setEditOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // on retire de la sélection les trades qui ne sont plus affichés
+  useEffect(() => {
+    const visible = new Set(rows.map((t) => t.id));
+    setSelected((s) => {
+      const next = new Set([...s].filter((id) => visible.has(id)));
+      return next.size === s.size ? s : next;
+    });
+  }, [rows]);
+
+  const toggleOne = (id: string) =>
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const allSelected = rows.length > 0 && rows.every((t) => selected.has(t.id));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rows.map((t) => t.id)));
+  const clearSelection = () => {
+    setSelected(new Set());
+    setSelecting(false);
+  };
+  const ids = [...selected];
+
+  const doDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteMany(ids);
+      toast(`${ids.length} trade${ids.length > 1 ? 's' : ''} supprimé${ids.length > 1 ? 's' : ''}`, 'success');
+      setConfirmDelete(false);
+      clearSelection();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const selectionBar = (
+    <>
+      <span className="text-sm text-white">
+        <span className="num font-semibold text-gold">{selected.size}</span> sélectionné{selected.size > 1 ? 's' : ''}
+      </span>
+      <button className="text-xs text-gold hover:underline" onClick={toggleAll}>
+        {allSelected ? 'Tout désélectionner' : `Tout sélectionner (${rows.length})`}
+      </button>
+      <div className="ml-auto flex gap-2">
+        <button className="btn-ghost !px-3 !py-2" disabled={!selected.size} onClick={() => setEditOpen(true)}>
+          <Icon name="edit" size={15} /> Modifier
+        </button>
+        <button className="btn-danger !px-3 !py-2" disabled={!selected.size} onClick={() => setConfirmDelete(true)}>
+          <Icon name="trash" size={15} /> Supprimer
+        </button>
+        <button className="btn-ghost !px-2 !py-2" onClick={clearSelection} aria-label="Annuler la sélection">
+          <Icon name="close" size={15} />
+        </button>
+      </div>
+    </>
+  );
+
+  const Check = ({ on }: { on: boolean }) => (
+    <span
+      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
+        on ? 'border-gold bg-gold text-onaccent' : 'border-white/30 bg-white/[0.04]'
+      }`}
+      aria-hidden
+    >
+      {on && <Icon name="check" size={13} strokeWidth={3} />}
+    </span>
+  );
+
   return (
     <div className="glass overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b border-white/10 p-3">
@@ -88,10 +177,52 @@ export function TradesTable({ trades, onOpen }: { trades: ComputedTrade[]; onOpe
           <option value="r:1">Pire R</option>
           <option value="discipline:-1">Discipline</option>
         </select>
+        <button
+          className={`btn-ghost !py-2 md:hidden ${selecting ? '!border-gold/60 !text-gold' : ''}`}
+          onClick={() => (selecting ? clearSelection() : setSelecting(true))}
+        >
+          <Icon name="check" size={15} /> {selecting ? 'Terminer' : 'Sélectionner'}
+        </button>
         <span className="ml-auto text-xs text-white/45">
           <span className="num text-white/70">{rows.length}</span> ligne{rows.length > 1 ? 's' : ''}
         </span>
       </div>
+
+      {(selected.size > 0 || selecting) && (
+        <>
+          {/* Desktop : barre en haut du tableau */}
+          <div className="sticky top-0 z-20 hidden flex-wrap items-center gap-2 border-b border-gold/30 bg-night-800/95 p-3 backdrop-blur md:flex">
+            {selectionBar}
+          </div>
+          {/* Mobile : barre fixe au-dessus de la navigation (hors de la carte, à cause du flou) */}
+          {createPortal(
+            <div className="glass-strong fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 flex flex-wrap items-center gap-2 border-gold/40 bg-night-800/90 p-3 md:hidden">
+              {selectionBar}
+            </div>,
+            document.body,
+          )}
+        </>
+      )}
+
+      <BulkEditModal ids={ids} open={editOpen} onClose={() => setEditOpen(false)} onDone={() => { setEditOpen(false); clearSelection(); }} />
+      <Modal
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title={<div className="text-lg font-semibold text-white">Supprimer {ids.length} trade{ids.length > 1 ? 's' : ''} ?</div>}
+      >
+        <p className="text-sm text-white/70">
+          Les trades sélectionnés et leurs captures seront supprimés de votre journal. Ils restent récupérables dans l'historique de votre repo
+          GitHub.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button className="btn-ghost" onClick={() => setConfirmDelete(false)}>
+            Annuler
+          </button>
+          <button className="btn-danger" onClick={doDelete} disabled={deleting}>
+            {deleting ? 'Suppression…' : `Supprimer ${ids.length} trade${ids.length > 1 ? 's' : ''}`}
+          </button>
+        </div>
+      </Modal>
 
       {rows.length === 0 && <div className="p-10 text-center text-sm text-white/40">Aucun trade ne correspond.</div>}
 
@@ -99,7 +230,11 @@ export function TradesTable({ trades, onOpen }: { trades: ComputedTrade[]; onOpe
       <ul className="divide-y divide-white/[0.06] md:hidden">
         {rows.map((t) => (
           <li key={t.id}>
-            <button onClick={() => onOpen(t)} className="flex w-full items-center gap-3 p-3 text-left active:bg-white/[0.05]">
+            <button
+              onClick={() => (selecting ? toggleOne(t.id) : onOpen(t))}
+              className={`flex w-full items-center gap-3 p-3 text-left active:bg-white/[0.05] ${selected.has(t.id) ? 'bg-gold/[0.08]' : ''}`}
+            >
+              {selecting && <Check on={selected.has(t.id)} />}
               <Thumbnail path={t.screenshots.after ?? t.screenshots.before} className="h-12 w-16 shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -108,6 +243,7 @@ export function TradesTable({ trades, onOpen }: { trades: ComputedTrade[]; onOpe
                     {fmtDate(t.entryAt)} · {fmtTime(t.entryAt)}
                   </span>
                 </div>
+                {multiAccount && <div className="mt-0.5 truncate text-[11px] text-gold/80">{accountName(t.accountId)}</div>}
                 <div className="mt-1 truncate text-xs text-white/50">
                   {t.emotionBefore && EMOTION_EMOJI[t.emotionBefore]} {t.errorTags.join(', ') || t.notes || '—'}
                 </div>
@@ -126,6 +262,11 @@ export function TradesTable({ trades, onOpen }: { trades: ComputedTrade[]; onOpe
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-[11px] uppercase tracking-wider text-white/45">
+              <th className="w-10 px-3 py-3">
+                <button onClick={toggleAll} aria-label="Tout sélectionner" className="block">
+                  <Check on={allSelected} />
+                </button>
+              </th>
               {COLS.map((c, i) => (
                 <th key={i} className={`whitespace-nowrap px-3 py-3 font-medium ${c.className ?? ''}`}>
                   {c.key ? (
@@ -145,10 +286,21 @@ export function TradesTable({ trades, onOpen }: { trades: ComputedTrade[]; onOpe
               <tr
                 key={t.id}
                 onClick={() => onOpen(t)}
-                className="cursor-pointer border-t border-white/[0.06] transition hover:bg-white/[0.05]"
+                className={`cursor-pointer border-t border-white/[0.06] transition hover:bg-white/[0.05] ${selected.has(t.id) ? 'bg-gold/[0.08]' : ''}`}
                 tabIndex={0}
                 onKeyDown={(e) => e.key === 'Enter' && onOpen(t)}
               >
+                <td
+                  className="px-3 py-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleOne(t.id);
+                  }}
+                >
+                  <button aria-label="Sélectionner ce trade" className="block">
+                    <Check on={selected.has(t.id)} />
+                  </button>
+                </td>
                 <td className="px-3 py-2">
                   <Thumbnail path={t.screenshots.after ?? t.screenshots.before} />
                 </td>
@@ -158,6 +310,7 @@ export function TradesTable({ trades, onOpen }: { trades: ComputedTrade[]; onOpe
                 </td>
                 <td className="px-3 py-2">
                   <DirectionBadge d={t.direction} />
+                  {multiAccount && <div className="mt-1 max-w-[7rem] truncate text-[11px] text-gold/80">{accountName(t.accountId)}</div>}
                 </td>
                 <td className="num px-3 py-2 text-right text-white/80">{fmtPrice(t.entryPrice)}</td>
                 <td className="num px-3 py-2 text-right text-white/50">{fmtPrice(t.stopLoss)}</td>

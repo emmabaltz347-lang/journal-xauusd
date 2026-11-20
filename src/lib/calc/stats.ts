@@ -57,8 +57,12 @@ export function profitFactor(rs: number[]): number {
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
-/** Statistiques sur des trades déjà triés chronologiquement */
-export function computeStats(trades: ComputedTrade[]): Stats {
+/**
+ * Statistiques sur des trades déjà triés chronologiquement.
+ * `startCapital` : capital au début de la sélection (somme des comptes concernés) ;
+ * par défaut, le capital avant le premier trade.
+ */
+export function computeStats(trades: ComputedTrade[], startCapital?: number): Stats {
   const closed = trades.filter((t) => t.closed);
   const rs = closed.map((t) => t.r);
   const winsR = rs.filter((r) => r > 0);
@@ -67,8 +71,8 @@ export function computeStats(trades: ComputedTrade[]): Stats {
   // Courbes cumulées
   let cumR = 0;
   const curveR = rs.map((r) => (cumR += r));
-  const startCapital = closed[0]?.capitalBefore ?? 0;
-  let cap = startCapital;
+  const start = startCapital ?? closed[0]?.capitalBefore ?? 0;
+  let cap = start;
   const curveEur = closed.map((t) => (cap += t.pnlEur));
 
   const s = streaks(rs);
@@ -85,7 +89,7 @@ export function computeStats(trades: ComputedTrade[]): Stats {
     avgWinR: round(mean(winsR), 2),
     avgLossR: round(mean(lossesR), 2),
     maxDrawdownR: round(drawdown(curveR, 0).max, 2),
-    maxDrawdownPct: drawdownPercent(curveEur, startCapital),
+    maxDrawdownPct: drawdownPercent(curveEur, start),
     longestWinStreak: s.win,
     longestLossStreak: s.loss,
   };
@@ -102,10 +106,10 @@ export interface EquityPoint {
 }
 
 /** Points de la courbe d'equity (premier point = départ) */
-export function equityCurve(trades: ComputedTrade[]): EquityPoint[] {
+export function equityCurve(trades: ComputedTrade[], startCapital?: number): EquityPoint[] {
   const closed = trades.filter((t) => t.closed);
   if (!closed.length) return [];
-  const start = closed[0].capitalBefore;
+  const start = startCapital ?? closed[0].capitalBefore;
   let cumR = 0;
   let cap = start;
   let peakR = 0;

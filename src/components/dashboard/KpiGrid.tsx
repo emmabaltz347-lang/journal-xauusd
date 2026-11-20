@@ -1,4 +1,5 @@
-import { useStats } from '../../hooks/useStats';
+import { useAccountScope, useStats } from '../../hooks/useStats';
+import { currentCapital } from '../../lib/calc/accounts';
 import { useTrades } from '../../hooks/useTrades';
 import { useSettings } from '../../hooks/useSettings';
 import { useFilters } from '../../hooks/useFilters';
@@ -10,8 +11,15 @@ export function KpiGrid() {
   const { computed } = useTrades();
   const { filtered } = useFilters();
   const { settings } = useSettings();
-  const capital = computed.length ? computed[computed.length - 1].capitalAfter : settings.startingCapital;
-  const growth = settings.startingCapital ? capital / settings.startingCapital - 1 : 0;
+  const scope = useAccountScope();
+  const { start: startCap, current: capital } = currentCapital(computed, settings.accounts, scope);
+  const growth = startCap ? capital / startCap - 1 : 0;
+  const capLabel =
+    scope.length === 1 && settings.accounts.length > 1
+      ? `Capital · ${settings.accounts.find((a) => a.id === scope[0])?.name ?? ''}`
+      : settings.accounts.length > 1
+        ? 'Capital · tous les comptes'
+        : 'Capital actuel';
   const disc = filtered.filter((t) => t.discipline != null);
   const avgDisc = disc.length ? disc.reduce((a, t) => a + (t.discipline ?? 0), 0) / disc.length : null;
 
@@ -22,15 +30,15 @@ export function KpiGrid() {
       </KpiCard>
       <KpiCard
         index={1}
-        label="Capital actuel"
+        label={capLabel}
         className="col-span-2"
         sub={
           <>
-            Départ <span className="num">{fmtEur(settings.startingCapital)}</span> ·{' '}
+            Départ <span className="num">{fmtEur(startCap)}</span> ·{' '}
             <span className={`num ${resultClass(growth)}`}>{growth > 0 ? '+' : ''}{fmtPct(growth, 2)}</span>
           </>
         }
-        hint="Capital de départ + gains cumulés de tous les trades (non filtré)"
+        hint="Capital de départ + gains cumulés de tous les trades du ou des comptes (hors filtres de période)"
       >
         <CountUp value={capital} format={(n) => fmtEur(n)} className="text-3xl text-gold md:text-4xl" />
       </KpiCard>

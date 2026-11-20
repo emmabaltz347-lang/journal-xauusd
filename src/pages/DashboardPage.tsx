@@ -12,6 +12,7 @@ import { exportJpg, exportPdf } from '../lib/export/visual';
 import { useToast } from '../hooks/useToast';
 import { useStats } from '../hooks/useStats';
 import { useFilters } from '../hooks/useFilters';
+import { useSettings } from '../hooks/useSettings';
 import { isFiltered, periodLabel } from '../lib/calc/filters';
 
 type Tab = 'stats' | 'trades';
@@ -23,6 +24,7 @@ export default function DashboardPage() {
   const [busy, setBusy] = useState(false);
   const { openCount } = useStats();
   const { filters } = useFilters();
+  const { settings } = useSettings();
 
   const run = async (fn: (n: HTMLElement, name: string) => Promise<void>) => {
     if (!ref.current) return;
@@ -44,7 +46,8 @@ export default function DashboardPage() {
           <>
             {isFiltered(filters) ? (
               <span className="text-gold">
-                Filtré · {periodLabel(filters)}
+                Filtré · {filters.account !== 'all' && `${settings.accounts.find((a) => a.id === filters.account)?.name ?? ''} · `}
+                {periodLabel(filters)}
                 {filters.direction !== 'all' && ` · ${filters.direction === 'buy' ? 'achats' : 'ventes'}`}
                 {filters.emotion !== 'all' && ` · ${filters.emotion}`}
                 {filters.errorTag !== 'all' && ` · ${filters.errorTag === 'none' ? 'sans erreur' : filters.errorTag}`}

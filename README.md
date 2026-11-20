@@ -139,8 +139,10 @@ Les réglages d'apparence (thème, couleurs, polices) sont aussi à faire une fo
 
 - **Ajouter un trade** : sur mobile, le bouton doré **+** ; sur desktop, le menu **Ajouter**. Les boutons **TP touché / SL touché** remplissent le prix de sortie en un geste. Renseignez les **lots** pour un résultat en € exact ; sinon, le résultat est estimé à partir du % de risque. Le **taux EUR/USD** se remplit tout seul avec le cours de la **minute d'entrée** du trade (cours EUR/USDT Binance, repli sur le taux BCE du jour) et se recalcule si vous changez l'heure d'entrée ; il est enregistré avec le trade.
 - **Synchronisation entre appareils** : chaque appareil (iPhone, ordinateur) doit avoir le token saisi dans ses Réglages. L'app relit GitHub quand vous revenez dessus et toutes les minutes. Le badge vert « Synchronisé » force une actualisation quand on le touche.
-  - Les **réglages de calcul** (capital de départ, % de risque, pips, onces par lot, taux EUR/USD, tags d'erreur) sont enregistrés dans `data/settings.json` du repo privé : ils sont **identiques sur tous vos appareils**.
-  - Restent propres à chaque appareil : le token, l'apparence (thème, polices) et les filtres du dashboard.
+  - Les **réglages** (comptes, capital, % de risque, pips, onces par lot, taux EUR/USD, tags d'erreur **et apparence**) sont enregistrés dans `data/settings.json` du repo privé : ils sont **identiques sur tous vos appareils**.
+  - Restent propres à chaque appareil : le token et les filtres du dashboard.
+- **Plusieurs comptes** (Réglages → Comptes) : chacun a son nom, son capital de départ et son % de risque ; un nouveau compte reprend les réglages du compte principal. Chaque trade est rattaché à un compte, et le dashboard se filtre par compte (« Tous les comptes » additionne les capitaux).
+- **Sélection multiple** (Récap) : cases à cocher (sur mobile, bouton « Sélectionner ») pour modifier en une fois le compte, le risque, les lots, le taux, les émotions, la discipline ou les erreurs de plusieurs trades, ou pour les supprimer.
   - L'app se **met à jour toute seule** quand une nouvelle version est publiée (sauf pendant la saisie d'un trade : un bandeau propose alors la mise à jour). Le numéro de version est affiché en bas des Réglages.
 - **Captures** : prise de photo, galerie, glisser-déposer ou collage (⌘V). Les images sont compressées dans le navigateur (WebP, 1 600 px de large maximum, environ 50 à 150 Ko) avant le commit.
 - **Filtres globaux** (période, sens, émotion, erreur) : ils s'appliquent aux KPI, aux graphiques et au récap. Pour une semaine, un mois, un trimestre ou une année, les flèches ‹ › permettent de naviguer d'une période à l'autre.
@@ -186,6 +188,7 @@ Les euros ne sont **jamais figés** : si vous modifiez un ancien trade ou le cap
   "exitPrice": 2658.40,
   "outcome": "tp",
   "riskPercent": 1,
+  "accountId": "principal",
   "lots": 0.1,
   "pnlManual": null,
   "rMultiple": 2,

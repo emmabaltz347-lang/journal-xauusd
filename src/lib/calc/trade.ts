@@ -1,4 +1,5 @@
-import type { ComputedTrade, Direction, Trade } from '../../types/trade';
+import type { Account, ComputedTrade, Direction, Trade } from '../../types/trade';
+import { accountIdOf, defaultAccounts } from './accounts';
 
 /** Paramètres de calcul, réglables dans les Réglages */
 export interface CalcOptions {
@@ -112,22 +113,33 @@ export const byEntryDate = (a: Trade, b: Trade) => new Date(a.entryAt).getTime()
 
 /**
  * Enrichit tous les trades (ordre chronologique) avec R, capital avant/après et € gagnés.
- * Le capital est chaîné : chaque trade utilise le capital laissé par le précédent.
+ * Le capital est chaîné compte par compte : chaque trade utilise le capital laissé
+ * par le trade précédent du même compte.
  * Doit être appelé sur TOUS les trades (pas les trades filtrés) pour un capital juste.
+ * `accounts` peut être un simple capital de départ (un seul compte).
  */
-export function computeTrades(trades: Trade[], startingCapital: number, opts: CalcOptions = DEFAULT_CALC): ComputedTrade[] {
-  let capital = startingCapital;
+export function computeTrades(
+  trades: Trade[],
+  accounts: Account[] | number,
+  opts: CalcOptions = DEFAULT_CALC,
+): ComputedTrade[] {
+  const accs = typeof accounts === 'number' ? defaultAccounts(accounts) : accounts.length ? accounts : defaultAccounts();
+  const capitals = new Map(accs.map((a) => [a.id, a.startingCapital]));
   return [...trades].sort(byEntryDate).map((t) => {
+    const accountId = accountIdOf(t, accs);
+    let capital = capitals.get(accountId) ?? 0;
     const r = effectiveR(t);
     const closed = r !== null || t.pnlManual != null;
     const rr = r ?? 0;
     const { pnl, source } = closed ? tradePnlEur(t, rr, capital, opts) : { pnl: 0, source: 'risk' as const };
     const capitalBefore = capital;
     capital = round(capital + pnl, 2);
+    capitals.set(accountId, capital);
     // risque prévu = capital × % de risque saisi (indépendant des lots)
     const riskEur = round((capitalBefore * t.riskPercent) / 100, 2);
     return {
       ...t,
+      accountId,
       r: rr,
       closed,
       capitalBefore,
