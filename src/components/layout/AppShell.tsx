@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icon, type IconName } from '../ui/Icon';
 import { useTrades } from '../../hooks/useTrades';
+import { useEffect, useState } from 'react';
+import { applyUpdate, onUpdatePending, updatePending } from '../../lib/pwa';
 
 const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
   { to: '/', label: 'Dashboard', icon: 'dashboard', end: true },
@@ -50,6 +52,23 @@ function SyncBadge() {
   );
 }
 
+function UpdateBanner() {
+  const [show, setShow] = useState(updatePending);
+  useEffect(() => {
+    const off = onUpdatePending(() => setShow(true));
+    return () => void off();
+  }, []);
+  if (!show) return null;
+  return (
+    <div className="glass-strong fixed inset-x-3 top-3 z-50 flex items-center gap-3 border-gold/40 bg-night-800/80 p-3 text-sm md:left-auto md:right-6 md:w-96">
+      <span className="flex-1">Nouvelle version de l'app disponible.</span>
+      <button className="btn-gold !py-2" onClick={applyUpdate}>
+        Mettre à jour
+      </button>
+    </div>
+  );
+}
+
 export default function AppShell() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -59,6 +78,7 @@ export default function AppShell() {
     <div className="min-h-screen">
       <div className="bg-aurora" aria-hidden />
       <div className="bg-grain" aria-hidden />
+      <UpdateBanner />
 
       {/* Barre latérale desktop */}
       <aside className="glass fixed inset-y-4 left-4 z-30 hidden w-60 flex-col gap-8 p-5 md:flex">

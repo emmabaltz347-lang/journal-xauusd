@@ -195,6 +195,8 @@ export function TradeForm({ trade, onDone }: { trade?: Trade; onDone: (t: Trade)
 
     const now = new Date().toISOString();
     const t: Trade = {
+      // on part du trade existant pour ne perdre aucun champ (y compris d'une version plus récente)
+      ...(trade ?? {}),
       id: trade?.id ?? makeId(d.entryAt),
       symbol: 'XAUUSD',
       entryAt: localInputToIso(d.entryAt),

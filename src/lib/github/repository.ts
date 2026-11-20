@@ -79,3 +79,60 @@ export async function removeScreenshot(cfg: RepoConfig, path: string): Promise<v
 }
 
 export const fetchScreenshot = (cfg: RepoConfig, path: string) => getBlob(cfg, path);
+
+// --- Réglages partagés entre appareils (data/settings.json du repo privé) ---------------
+export const SETTINGS_PATH = 'data/settings.json';
+
+/** Réglages de calcul communs à tous les appareils (le token et l'apparence restent par appareil) */
+export interface SharedSettings {
+  startingCapital: number;
+  defaultRiskPercent: number;
+  pipsPerDollar: number;
+  contractSize: number;
+  eurUsd: number;
+  knownErrorTags: string[];
+}
+
+export const SHARED_KEYS: (keyof SharedSettings)[] = [
+  'startingCapital',
+  'defaultRiskPercent',
+  'pipsPerDollar',
+  'contractSize',
+  'eurUsd',
+  'knownErrorTags',
+];
+
+export function pickShared(s: SharedSettings): SharedSettings {
+  return Object.fromEntries(SHARED_KEYS.map((k) => [k, s[k]])) as unknown as SharedSettings;
+}
+
+/** Lit les réglages partagés ; null si le fichier n'existe pas encore */
+export async function loadSharedSettings(cfg: RepoConfig): Promise<Partial<SharedSettings> | null> {
+  const file = await getTextFile(cfg, SETTINGS_PATH);
+  if (!file) return null;
+  const raw = JSON.parse(file.text) as Record<string, unknown>;
+  const out: Partial<SharedSettings> = {};
+  for (const k of SHARED_KEYS) {
+    const v = raw[k];
+    if (k === 'knownErrorTags') {
+      if (Array.isArray(v)) out.knownErrorTags = v.filter((x): x is string => typeof x === 'string');
+    } else if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+      (out as Record<string, number>)[k] = v;
+    }
+  }
+  return out;
+}
+
+export async function saveSharedSettings(cfg: RepoConfig, s: SharedSettings, attempts = 3): Promise<void> {
+  const body = utf8ToBase64(JSON.stringify(pickShared(s), null, 2) + '\n');
+  for (let i = 0; i < attempts; i++) {
+    const file = await getTextFile(cfg, SETTINGS_PATH);
+    try {
+      await putFile(cfg, SETTINGS_PATH, body, '⚙️ Réglages du journal', file?.sha);
+      return;
+    } catch (e) {
+      const conflict = e instanceof GitHubError && (e.status === 409 || e.status === 422);
+      if (!conflict || i === attempts - 1) throw e;
+    }
+  }
+}

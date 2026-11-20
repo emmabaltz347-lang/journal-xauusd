@@ -6,12 +6,20 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Nom du repo GitHub : sert de chemin de base sur GitHub Pages
 const base = process.env.VITE_BASE ?? '/journal-xauusd/';
 
+const version = (process.env.GITHUB_SHA ?? 'dev').slice(0, 7);
+
 export default defineConfig({
   base,
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // mise à jour gérée dans src/lib/pwa.ts (sans recharger pendant une saisie)
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'Journal de trading XAUUSD',

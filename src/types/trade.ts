@@ -63,7 +63,9 @@ export const TradeSchema = z.object({
   errorTags: z.array(z.string()),
   createdAt: z.string(),
   updatedAt: z.string(),
-});
+})
+  // conserve les champs inconnus : une ancienne version de l'app n'efface pas ceux d'une plus récente
+  .passthrough();
 
 export type Trade = z.infer<typeof TradeSchema>;
 export type Direction = Trade['direction'];
@@ -71,7 +73,7 @@ export type Direction = Trade['direction'];
 export const TradesFileSchema = z.object({
   version: z.literal(1),
   trades: z.array(TradeSchema),
-});
+}).passthrough();
 export type TradesFile = z.infer<typeof TradesFileSchema>;
 
 import type { Theme } from '../lib/theme';

@@ -12,6 +12,7 @@ import { exportJson, importJson } from '../lib/export/json';
 import { parseDecimal, toInput } from '../lib/format';
 import { clearLocalTrades } from '../lib/storage';
 import type { Trade } from '../types/trade';
+import { APP_VERSION, BUILD_TIME } from '../lib/pwa';
 
 function Row({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
@@ -24,7 +25,7 @@ function Row({ label, hint, children }: { label: string; hint?: ReactNode; child
 }
 
 export default function SettingsPage() {
-  const { settings, update } = useSettings();
+  const { settings, update, updateShared, pullShared, sharedStatus } = useSettings();
   const { trades, mode, importTrades, resetDemo, reload, lastSync, localOnly } = useTrades();
   const toast = useToast();
   const file = useRef<HTMLInputElement>(null);
@@ -43,6 +44,15 @@ export default function SettingsPage() {
   const [contractSize, setContractSize] = useState(toInput(settings.contractSize));
   const [eurUsd, setEurUsd] = useState(toInput(settings.eurUsd));
   const [pending, setPending] = useState<Trade[]>([]);
+
+  // les champs suivent les réglages reçus d'un autre appareil
+  useEffect(() => {
+    setCapital(toInput(settings.startingCapital));
+    setRisk(toInput(settings.defaultRiskPercent));
+    setPipsPerDollar(toInput(settings.pipsPerDollar));
+    setContractSize(toInput(settings.contractSize));
+    setEurUsd(toInput(settings.eurUsd));
+  }, [settings.startingCapital, settings.defaultRiskPercent, settings.pipsPerDollar, settings.contractSize, settings.eurUsd]);
   const [fetchingRate, setFetchingRate] = useState(false);
 
   /** Taux de référence BCE du jour (api.frankfurter.app, gratuit, sans clé) */
@@ -92,6 +102,7 @@ export default function SettingsPage() {
         return;
       }
       update({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch, githubToken: cfg.token });
+      void pullShared(true);
       toast(`Connecté à ${cfg.owner}/${cfg.repo}${info.private ? ' (privé ✓)' : ' — repo PUBLIC'}`, info.private ? 'success' : 'error');
     } catch (e) {
       toast(e instanceof Error ? e.message : String(e), 'error');
@@ -106,7 +117,7 @@ export default function SettingsPage() {
     toast('Token supprimé de ce navigateur', 'info');
   };
 
-  const saveTrading = () => {
+  const saveTrading = async () => {
     const c = parseDecimal(capital);
     const r = parseDecimal(risk);
     const p = parseDecimal(pipsPerDollar);
@@ -115,8 +126,12 @@ export default function SettingsPage() {
     if (c == null || c <= 0 || r == null || r <= 0) return toast('Capital et risque doivent être positifs.', 'error');
     if (p == null || p <= 0 || cs == null || cs <= 0 || fx == null || fx <= 0)
       return toast('Pips, taille de lot et taux EUR/USD doivent être positifs.', 'error');
-    update({ startingCapital: c, defaultRiskPercent: r, pipsPerDollar: p, contractSize: cs, eurUsd: fx });
-    toast('Réglages enregistrés', 'success');
+    try {
+      await updateShared({ startingCapital: c, defaultRiskPercent: r, pipsPerDollar: p, contractSize: cs, eurUsd: fx });
+      toast(mode === 'github' ? 'Réglages enregistrés pour tous vos appareils' : 'Réglages enregistrés', 'success');
+    } catch (e) {
+      toast(`Enregistré sur cet appareil, mais pas sur GitHub : ${e instanceof Error ? e.message : e}`, 'error');
+    }
   };
 
   const onImport = async (f: File | undefined) => {
@@ -135,7 +150,16 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-4xl space-y-4">
       <PageHeader title="Réglages" subtitle="Capital, risque, apparence et synchronisation · stockés dans ce navigateur" />
 
-      <GlassCard title="Capital & risque" >
+      <GlassCard
+        title="Capital & risque"
+        action={
+          mode === 'github' && (
+            <span className={`chip ${sharedStatus === 'error' ? 'border-loss/40 text-loss' : 'border-gain/30 text-gain'}`}>
+              {sharedStatus === 'error' ? 'Non synchronisé' : sharedStatus === 'loading' ? 'Synchronisation…' : 'Commun à vos appareils'}
+            </span>
+          )
+        }
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           <Row label="Capital de départ (€)" hint="Le capital actuel = départ + gains cumulés. Les € de chaque trade sont recalculés.">
             <input className="field num" inputMode="decimal" value={capital} onChange={(e) => setCapital(e.target.value)} />
@@ -251,7 +275,7 @@ export default function SettingsPage() {
         </p>
         <TagInput
           value={settings.knownErrorTags}
-          onChange={(v) => update({ knownErrorTags: v })}
+          onChange={(v) => void updateShared({ knownErrorTags: v }).catch(() => toast('Tags enregistrés sur cet appareil seulement', 'error'))}
           suggestions={[]}
         />
       </GlassCard>
@@ -283,6 +307,10 @@ export default function SettingsPage() {
           </button>
         )}
       </GlassCard>
+      <p className="pb-4 text-center text-[11px] text-white/35">
+        Version {APP_VERSION} du {BUILD_TIME.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} ·{' '}
+        {trades.length} trade{trades.length > 1 ? 's' : ''} · {mode === 'github' ? `${settings.owner}/${settings.repo}` : 'mode démo (local)'}
+      </p>
     </div>
   );
 }

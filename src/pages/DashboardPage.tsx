@@ -11,6 +11,8 @@ import { LoadState } from '../components/layout/LoadState';
 import { exportJpg, exportPdf } from '../lib/export/visual';
 import { useToast } from '../hooks/useToast';
 import { useStats } from '../hooks/useStats';
+import { useFilters } from '../hooks/useFilters';
+import { isFiltered, periodLabel } from '../lib/calc/filters';
 
 type Tab = 'stats' | 'trades';
 
@@ -20,6 +22,7 @@ export default function DashboardPage() {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const { openCount } = useStats();
+  const { filters } = useFilters();
 
   const run = async (fn: (n: HTMLElement, name: string) => Promise<void>) => {
     if (!ref.current) return;
@@ -37,7 +40,21 @@ export default function DashboardPage() {
     <div ref={ref} className="space-y-4">
       <PageHeader
         title="Dashboard"
-        subtitle={openCount ? `${openCount} trade${openCount > 1 ? 's' : ''} en cours non comptabilisé${openCount > 1 ? 's' : ''}` : 'Statistiques en R'}
+        subtitle={
+          <>
+            {isFiltered(filters) ? (
+              <span className="text-gold">
+                Filtré · {periodLabel(filters)}
+                {filters.direction !== 'all' && ` · ${filters.direction === 'buy' ? 'achats' : 'ventes'}`}
+                {filters.emotion !== 'all' && ` · ${filters.emotion}`}
+                {filters.errorTag !== 'all' && ` · ${filters.errorTag === 'none' ? 'sans erreur' : filters.errorTag}`}
+              </span>
+            ) : (
+              'Tous les trades · statistiques en R'
+            )}
+            {openCount > 0 && ` · ${openCount} en cours non comptabilisé${openCount > 1 ? 's' : ''}`}
+          </>
+        }
         actions={
           tab === 'stats' && (
           <div className="flex gap-2" data-no-export>
