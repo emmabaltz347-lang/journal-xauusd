@@ -34,6 +34,10 @@ export function useStats() {
       byWeekday: rByWeekday(filtered),
       byHour: rByHour(filtered),
       openCount: filtered.length - closed.length,
+      /** Capital des comptes concernés au début de la sélection */
+      startCapital: start ?? 0,
+      grossGainEur: closed.reduce((a, t) => a + Math.max(0, t.pnlEur), 0),
+      grossLossEur: closed.reduce((a, t) => a + Math.min(0, t.pnlEur), 0),
     };
   }, [filtered, computed, settings.accounts, scope]);
 }

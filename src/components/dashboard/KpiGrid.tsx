@@ -7,7 +7,8 @@ import { fmtCompactR, fmtEur, fmtNumber, fmtPF, fmtPct, fmtR, resultClass } from
 import { CountUp, KpiCard } from './KpiCard';
 
 export function KpiGrid() {
-  const { stats: s } = useStats();
+  const { stats: s, startCapital: selStart, grossGainEur, grossLossEur } = useStats();
+  const eurPct = selStart ? s.totalEur / selStart : 0;
   const { computed } = useTrades();
   const { filtered } = useFilters();
   const { settings } = useSettings();
@@ -25,8 +26,13 @@ export function KpiGrid() {
 
   return (
     <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-      <KpiCard index={0} label="Résultat total" className="col-span-2" sub={<CountUp value={s.totalEur} format={(n) => fmtEur(n, true)} className={resultClass(s.totalEur)} />}>
-        <CountUp value={s.totalR} format={(n) => fmtR(n)} className={`text-3xl md:text-4xl ${resultClass(s.totalR)}`} />
+      <KpiCard
+        index={0}
+        label="Résultat total"
+        className="col-span-2 lg:row-span-2 lg:flex lg:flex-col lg:justify-center"
+        sub={`${s.count} trade${s.count > 1 ? 's' : ''} clôturé${s.count > 1 ? 's' : ''} · ${fmtR(s.expectancy)} en moyenne`}
+      >
+        <CountUp value={s.totalR} format={(n) => fmtR(n)} className={`text-3xl md:text-5xl ${resultClass(s.totalR)}`} />
       </KpiCard>
       <KpiCard
         index={1}
@@ -41,6 +47,27 @@ export function KpiGrid() {
         hint="Capital de départ + gains cumulés de tous les trades du ou des comptes (hors filtres de période)"
       >
         <CountUp value={capital} format={(n) => fmtEur(n)} className="text-3xl text-gold md:text-4xl" />
+      </KpiCard>
+
+      <KpiCard
+        index={2}
+        label="Résultat en euros"
+        className="col-span-2"
+        sub={
+          <>
+            <span className="num text-gain">{fmtEur(grossGainEur, true)}</span> de gains ·{' '}
+            <span className="num text-loss">{fmtEur(grossLossEur, true)}</span> de pertes
+            {selStart > 0 && (
+              <>
+                {' '}
+                · <span className={`num ${resultClass(eurPct)}`}>{eurPct > 0 ? '+' : ''}{fmtPct(eurPct, 2)}</span> du capital
+              </>
+            )}
+          </>
+        }
+        hint="Somme des gains et pertes en € des trades affichés (filtres appliqués)"
+      >
+        <CountUp value={s.totalEur} format={(n) => fmtEur(n, true)} className={`text-3xl md:text-4xl ${resultClass(s.totalEur)}`} />
       </KpiCard>
 
       <KpiCard index={2} label="Winrate" sub={`${s.wins} gagnants · ${s.losses} perdants`}>
