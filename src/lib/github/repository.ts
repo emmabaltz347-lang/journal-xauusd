@@ -130,7 +130,7 @@ function isAccount(a: unknown): a is Account {
 const HEX = /^#[0-9a-f]{6}$/i;
 function sanitizeTheme(t: Partial<Theme>): Theme {
   const out: Theme = { ...DEFAULT_THEME };
-  for (const k of ['accent', 'gain', 'loss', 'bgFrom', 'bgTo', 'glow'] as const) if (typeof t[k] === 'string' && HEX.test(t[k]!)) out[k] = t[k]!;
+  for (const k of ['accent', 'gain', 'loss', 'bgFrom', 'bgTo', 'glow', 'title', 'text'] as const) if (typeof t[k] === 'string' && HEX.test(t[k]!)) out[k] = t[k]!;
   if (typeof t.preset === 'string') out.preset = t.preset;
   if (t.fontText && t.fontText in FONTS_TEXT) out.fontText = t.fontText;
   if (t.fontNum && t.fontNum in FONTS_NUM) out.fontNum = t.fontNum;

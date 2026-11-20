@@ -66,7 +66,7 @@ export function CalendarCard() {
           <button className="rounded-lg p-2 text-white/60 hover:bg-white/[0.08] hover:text-white" onClick={() => shift(-1)} aria-label="Mois précédent">
             <Icon name="chevron" size={16} className="rotate-180" />
           </button>
-          <h2 className="min-w-[8.5rem] text-center text-sm font-semibold text-white">
+          <h2 className="min-w-[8.5rem] text-center text-sm font-semibold text-title">
             {MONTHS[ym.m - 1]} {ym.y}
           </h2>
           <button className="rounded-lg p-2 text-white/60 hover:bg-white/[0.08] hover:text-white" onClick={() => shift(1)} aria-label="Mois suivant">

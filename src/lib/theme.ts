@@ -12,6 +12,8 @@ export interface Theme {
   bgFrom: string; // dégradé de fond : haut gauche
   bgTo: string; // bas droite
   glow: string; // halo coloré du fond
+  title: string; // titres et libellés
+  text: string; // texte courant
   fontText: FontText;
   fontNum: FontNum;
   scale: TextScale;
@@ -44,37 +46,37 @@ export const DEFAULT_GLASS = 25;
 export const PRESETS: Record<string, { label: string; colors: PresetColors; fontText: FontText; fontNum: FontNum }> = {
   graphite: {
     label: 'Graphite',
-    colors: { accent: '#d9b56c', gain: '#3ecf8e', loss: '#f2706b', bgFrom: '#0e0f13', bgTo: '#1c1d24', glow: '#3a3326' },
+    colors: { accent: '#d9b56c', gain: '#3ecf8e', loss: '#f2706b', bgFrom: '#0e0f13', bgTo: '#1c1d24', glow: '#3a3326', title: '#ffffff', text: '#ffffff' },
     fontText: 'manrope',
     fontNum: 'same',
   },
   nuit: {
     label: 'Or de nuit',
-    colors: { accent: '#e6c068', gain: '#34d399', loss: '#ff6b6b', bgFrom: '#070a1f', bgTo: '#2a1250', glow: '#4a2078' },
+    colors: { accent: '#e6c068', gain: '#34d399', loss: '#ff6b6b', bgFrom: '#070a1f', bgTo: '#2a1250', glow: '#4a2078', title: '#ffffff', text: '#ffffff' },
     fontText: 'inter',
     fontNum: 'jetbrains',
   },
   ocean: {
     label: 'Océan',
-    colors: { accent: '#5ec8e5', gain: '#4ade80', loss: '#fb7185', bgFrom: '#03121c', bgTo: '#0b2a3d', glow: '#0e4a5e' },
+    colors: { accent: '#5ec8e5', gain: '#4ade80', loss: '#fb7185', bgFrom: '#03121c', bgTo: '#0b2a3d', glow: '#0e4a5e', title: '#ffffff', text: '#ffffff' },
     fontText: 'dmsans',
     fontNum: 'same',
   },
   rose: {
     label: 'Or rose',
-    colors: { accent: '#e8b4a0', gain: '#6ee7b7', loss: '#f87171', bgFrom: '#140b12', bgTo: '#2d1623', glow: '#5a2a3d' },
+    colors: { accent: '#e8b4a0', gain: '#6ee7b7', loss: '#f87171', bgFrom: '#140b12', bgTo: '#2d1623', glow: '#5a2a3d', title: '#ffffff', text: '#ffffff' },
     fontText: 'jakarta',
     fontNum: 'same',
   },
   foret: {
     label: 'Forêt',
-    colors: { accent: '#e2c275', gain: '#86efac', loss: '#fca5a5', bgFrom: '#06110d', bgTo: '#12261c', glow: '#1f4a35' },
+    colors: { accent: '#e2c275', gain: '#86efac', loss: '#fca5a5', bgFrom: '#06110d', bgTo: '#12261c', glow: '#1f4a35', title: '#ffffff', text: '#ffffff' },
     fontText: 'outfit',
     fontNum: 'dmmono',
   },
   minuit: {
     label: 'Noir absolu',
-    colors: { accent: '#f5f5f4', gain: '#22c55e', loss: '#ef4444', bgFrom: '#000000', bgTo: '#0a0a0a', glow: '#1c1c1c' },
+    colors: { accent: '#f5f5f4', gain: '#22c55e', loss: '#ef4444', bgFrom: '#000000', bgTo: '#0a0a0a', glow: '#1c1c1c', title: '#ffffff', text: '#ffffff' },
     fontText: 'sora',
     fontNum: 'plexmono',
   },
@@ -117,6 +119,8 @@ export function applyTheme(t: Theme) {
   set('--c-bg-to', hexToChannels(t.bgTo));
   set('--c-bg-mid', hexToChannels(mixHex(t.bgFrom, t.bgTo, 0.5)));
   set('--c-glow', hexToChannels(t.glow));
+  set('--c-title', hexToChannels(t.title ?? '#ffffff'));
+  set('--c-text', hexToChannels(t.text ?? '#ffffff'));
   set('--c-on-accent', hexToChannels(luminance(t.accent) > 0.45 ? '#111111' : '#ffffff'));
   set('--font-text', `${FONTS_TEXT[t.fontText].family}, system-ui, sans-serif`);
   const num = FONTS_NUM[t.fontNum].family;
@@ -152,7 +156,7 @@ export interface SavedTheme {
   style: ThemeStyle;
 }
 
-export const STYLE_KEYS: (keyof ThemeStyle)[] = ['accent', 'gain', 'loss', 'bgFrom', 'bgTo', 'glow', 'fontText', 'fontNum', 'glass'];
+export const STYLE_KEYS: (keyof ThemeStyle)[] = ['accent', 'gain', 'loss', 'bgFrom', 'bgTo', 'glow', 'title', 'text', 'fontText', 'fontNum', 'glass'];
 
 export function styleOf(t: Theme | ThemeStyle): ThemeStyle {
   return Object.fromEntries(STYLE_KEYS.map((k) => [k, t[k]])) as unknown as ThemeStyle;
@@ -175,4 +179,11 @@ export function themeFromSaved(saved: SavedTheme, scale: TextScale = 'md'): Them
 
 export function newThemeId() {
   return `th_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+}
+
+/** Rapport de contraste WCAG entre deux couleurs (1 à 21) */
+export function contrastRatio(a: string, b: string): number {
+  const la = luminance(a);
+  const lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }

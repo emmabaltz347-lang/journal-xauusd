@@ -5,6 +5,9 @@ import { Icon } from '../ui/Icon';
 import {
   DEFAULT_GLASS,
   FONTS_NUM,
+  contrastRatio,
+  luminance,
+  mixHex,
   FONTS_TEXT,
   defaultThemeLibrary,
   newThemeId,
@@ -24,6 +27,8 @@ const COLOR_FIELDS: { key: keyof Theme; label: string; hint: string }[] = [
   { key: 'bgFrom', label: 'Fond 1', hint: 'Haut du dégradé' },
   { key: 'bgTo', label: 'Fond 2', hint: 'Bas du dégradé' },
   { key: 'glow', label: 'Halo', hint: 'Lueur animée' },
+  { key: 'title', label: 'Titres', hint: 'Titres et libellés' },
+  { key: 'text', label: 'Textes', hint: 'Texte courant, axes' },
 ];
 
 function Swatches({ c }: { c: Pick<Theme, 'bgFrom' | 'bgTo' | 'accent' | 'gain' | 'loss'> }) {
@@ -58,6 +63,10 @@ export function AppearanceSettings() {
 
   // le curseur bouge vite : affichage immédiat, enregistrement groupé (updateShared regroupe déjà les envois)
   const setGlass = (glass: number) => set({ glass });
+
+  // lisibilité : contraste des titres et textes sur le fond
+  const bgMid = mixHex(t.bgFrom, t.bgTo, 0.5);
+  const lowContrast = (['title', 'text'] as const).filter((k) => Math.min(contrastRatio(t[k] ?? '#ffffff', t.bgFrom), contrastRatio(t[k] ?? '#ffffff', bgMid)) < 4.5);
 
   const active = library.find((x) => x.id === t.preset) ?? null;
   const modified = active ? !sameStyle(active.style, styleOf(t)) : true;
@@ -190,6 +199,11 @@ export function AppearanceSettings() {
               </label>
             ))}
           </div>
+          {lowContrast.length > 0 && (
+            <p className="mt-2 rounded-lg border border-loss/40 bg-loss/10 px-3 py-2 text-[12px] text-loss">
+              ⚠️ {lowContrast.map((k) => (k === 'title' ? 'les titres' : 'les textes')).join(' et ')} risquent d'être difficiles à lire sur ce fond. Choisissez une couleur plus {luminance(t.bgFrom) < 0.2 ? 'claire' : 'foncée'}.
+            </p>
+          )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -257,16 +271,20 @@ export function AppearanceSettings() {
         <div>
           <span className="label">Aperçu</span>
           <div className="glass grid grid-cols-3 gap-3 p-4">
+            <div className="col-span-3">
+              <div className="text-sm font-semibold text-title/90">Titre d'une carte</div>
+              <p className="mt-0.5 text-xs text-white/60">Exemple de texte courant : 11 gagnants · 9 perdants</p>
+            </div>
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-white/50">Résultat</div>
+              <div className="text-[11px] uppercase tracking-wider text-title/60">Résultat</div>
               <div className="num mt-1 text-xl font-semibold text-gain md:text-2xl">+18,00 R</div>
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-white/50">Capital</div>
+              <div className="text-[11px] uppercase tracking-wider text-title/60">Capital</div>
               <div className="num mt-1 text-xl font-semibold text-gold md:text-2xl">11 828 €</div>
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-white/50">Drawdown</div>
+              <div className="text-[11px] uppercase tracking-wider text-title/60">Drawdown</div>
               <div className="num mt-1 text-xl font-semibold text-loss md:text-2xl">−2,00 R</div>
             </div>
           </div>

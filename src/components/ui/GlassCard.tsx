@@ -21,7 +21,7 @@ export function GlassCard({ children, className = '', delay = 0, title, action }
     >
       {(title || action) && (
         <header className="mb-3 flex items-center justify-between gap-3">
-          {title && <h2 className="text-sm font-semibold text-white/80">{title}</h2>}
+          {title && <h2 className="text-sm font-semibold text-title/90">{title}</h2>}
           {action}
         </header>
       )}

@@ -32,7 +32,7 @@ export function KpiCard({
       className={`glass relative overflow-hidden p-4 md:p-5 ${className}`}
       title={hint}
     >
-      <div className="text-[11px] font-medium uppercase tracking-wider text-white/50">{label}</div>
+      <div className="text-[11px] font-medium uppercase tracking-wider text-title/60">{label}</div>
       <div className="mt-2 text-2xl font-semibold leading-tight md:text-[1.7rem]">{children}</div>
       {sub && <div className="mt-1.5 text-xs text-white/50">{sub}</div>}
     </motion.div>

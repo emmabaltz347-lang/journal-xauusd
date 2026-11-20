@@ -23,7 +23,7 @@ export function PeriodRecap({
   return (
     <div className="glass overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 p-3">
-        <h2 className="text-sm font-semibold text-white/85">{RECAP_TITLES[kind]}</h2>
+        <h2 className="text-sm font-semibold text-title/90">{RECAP_TITLES[kind]}</h2>
         <Segmented
           ariaLabel="Regrouper par"
           value={kind}

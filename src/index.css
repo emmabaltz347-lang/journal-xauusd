@@ -42,7 +42,7 @@ body {
     -webkit-backdrop-filter: blur(calc(var(--glass-blur, 18px) + 6px)) saturate(150%);
   }
   .label {
-    @apply mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/55;
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wider text-title/60;
   }
   .field {
     @apply w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-3 text-base text-white placeholder:text-white/30 outline-none transition focus:border-gold/70 focus:bg-white/[0.09] focus:ring-2 focus:ring-gold/20 md:py-2.5 md:text-sm;
@@ -103,7 +103,7 @@ body {
 
 /* Recharts */
 .recharts-cartesian-grid line { stroke: rgba(255, 255, 255, 0.06); }
-.recharts-text { fill: rgba(255, 255, 255, 0.5); font-size: 11px; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.recharts-text { fill: rgb(var(--c-text) / 0.5); font-size: 11px; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .recharts-surface:focus, .recharts-wrapper:focus { outline: none; }
 
 input[type='datetime-local']::-webkit-calendar-picker-indicator,

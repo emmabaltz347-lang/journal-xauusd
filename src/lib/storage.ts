@@ -46,7 +46,7 @@ export const loadSettings = (): Settings => {
   // anciennes versions : un seul capital → compte principal
   if (!saved.themeLibrary?.length) merged.themeLibrary = defaultThemeLibrary();
   // anciennes sauvegardes sans transparence
-  merged.themeLibrary = merged.themeLibrary.map((x) => ({ ...x, style: { ...x.style, glass: x.style.glass ?? merged.theme.glass ?? 25 } }));
+  merged.themeLibrary = merged.themeLibrary.map((x) => ({ ...x, style: { ...x.style, glass: x.style.glass ?? merged.theme.glass ?? 25, title: x.style.title ?? '#ffffff', text: x.style.text ?? '#ffffff' } }));
   if (!saved.accounts?.length) merged.accounts = defaultAccounts(merged.startingCapital, merged.defaultRiskPercent);
   return merged;
 };
