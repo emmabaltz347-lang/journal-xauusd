@@ -83,7 +83,7 @@ export function BulkEditModal({ ids, open, onClose, onDone }: { ids: string[]; o
   };
 
   const sel = 'field';
-  const keepOpt = <option value={KEEP}>— Ne pas modifier —</option>;
+  const keepOpt = <option value={KEEP}>— Inchangé —</option>;
 
   return (
     <Modal
